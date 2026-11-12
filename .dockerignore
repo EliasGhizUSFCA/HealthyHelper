@@ -1,0 +1,8 @@
+**/node_modules
+**/.next
+frontend
+data
+runs
+**/__pycache__
+**/.pytest_cache
+.git

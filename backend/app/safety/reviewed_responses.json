@@ -1,0 +1,73 @@
+{
+  "$comment": "Predetermined safety responses. These bypass the LLM entirely. review_status records that they are project-authored and MUST be reviewed by a qualified clinician before any real deployment.",
+  "review_status": "project-authored; pending clinical review",
+  "version": "1.0.0",
+  "routes": {
+    "eye_emergency": {
+      "message": "Severe eye pain, sudden changes in vision, a chemical or object in the eye, or an eye injury can need prompt care. Please don't rely on this app for that. Contact an eye-care professional, urgent care, or emergency services now. If a chemical got into your eye, rinse it with clean water while you seek help.",
+      "patterns": [
+        "severe eye pain",
+        "eye pain",
+        "(lost|losing|can'?t see|cannot see|blind)( in| out of| with)? (my )?((left|right) )?(eye|vision|sight)",
+        "(lost|losing|can'?t see|cannot see|blind)( in| out of)? (my )?(eye|vision|sight)",
+        "vision (loss|suddenly|went)",
+        "(chemical|bleach|acid)s? (in|into) (my )?eye",
+        "(hit|injur\\w*|scratch\\w*|poked|cut) (in |to )?(my )?eye",
+        "flash(es)? of light",
+        "curtain (over|across) (my )?(vision|eye)",
+        "double vision",
+        "halos? around lights?"
+      ]
+    },
+    "stroke_signs": {
+      "message": "Sudden face drooping, weakness or numbness on one side, trouble speaking, or confusion can be signs of a medical emergency. Please contact emergency services immediately \u2014 don't wait to see if it improves.",
+      "patterns": [
+        "face (is )?droop\\w*",
+        "drooping (face|mouth|eyelid)",
+        "slurred speech",
+        "can'?t (speak|talk) (properly|clearly)",
+        "sudden (numbness|weakness)",
+        "one side of my (face|body)"
+      ]
+    },
+    "airway_allergy": {
+      "message": "Swelling of the lips, tongue, face or throat, or any difficulty breathing or swallowing, can be a serious allergic reaction. Please contact emergency services now.",
+      "patterns": [
+        "(lips?|tongue|throat|face) (is |are )?(swelling|swollen|swell)",
+        "swell\\w* (of )?(my )?(lips?|tongue|throat)",
+        "(hard|difficult\\w*|trouble|can'?t) (to )?(breath\\w*|swallow\\w*)",
+        "short(ness)? of breath",
+        "anaphyla\\w*"
+      ]
+    },
+    "chest_or_collapse": {
+      "message": "Chest pain, fainting, or a severe sudden headache can need urgent medical attention. Please contact emergency services or seek urgent care now.",
+      "patterns": [
+        "chest pain",
+        "(fainted|passing out|passed out|collapsed)",
+        "worst headache",
+        "sudden severe headache"
+      ]
+    },
+    "self_harm": {
+      "message": "I'm really sorry you're going through this. You deserve support from a person right now. If you might act on thoughts of harming yourself, please contact your local emergency number. In the US you can call or text 988 (Suicide & Crisis Lifeline); elsewhere, local crisis lines can help.",
+      "patterns": [
+        "kill myself",
+        "suicid\\w*",
+        "end my life",
+        "self[- ]harm",
+        "hurt myself",
+        "don'?t want to (live|be alive)"
+      ]
+    },
+    "severe_skin": {
+      "message": "Rapidly spreading redness, blistering, skin that is hot and very painful, or a rash with fever can need prompt medical assessment. Please contact a healthcare professional or urgent care rather than relying on this app.",
+      "patterns": [
+        "(spreading|spreads) (fast|quickly|rapidly)",
+        "rash (and|with) (a )?fever",
+        "blister\\w* (all over|everywhere|spreading)",
+        "(skin|face) (is )?(hot and )?(very|extremely) painful"
+      ]
+    }
+  }
+}

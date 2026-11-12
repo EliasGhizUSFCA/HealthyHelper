@@ -1,0 +1,1917 @@
+{
+  "$defs": {
+    "AgentTrace": {
+      "additionalProperties": false,
+      "properties": {
+        "attempts": {
+          "title": "Attempts",
+          "type": "integer"
+        },
+        "context_preview": {
+          "description": "Redacted preview of what was sent to the LLM",
+          "title": "Context Preview",
+          "type": "string"
+        },
+        "evidence": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/StructuredObservations"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "latency_ms": {
+          "title": "Latency Ms",
+          "type": "number"
+        },
+        "model": {
+          "title": "Model",
+          "type": "string"
+        },
+        "provider": {
+          "title": "Provider",
+          "type": "string"
+        },
+        "retrieval": {
+          "items": {
+            "$ref": "#/$defs/RetrievedDoc"
+          },
+          "title": "Retrieval",
+          "type": "array"
+        },
+        "route": {
+          "enum": [
+            "standard",
+            "urgent_safety",
+            "diagnosis_request",
+            "insufficient_evidence",
+            "fallback"
+          ],
+          "title": "Route",
+          "type": "string"
+        },
+        "selected_evidence": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Selected Evidence",
+          "type": "array"
+        },
+        "steps": {
+          "items": {
+            "$ref": "#/$defs/TraceStep"
+          },
+          "title": "Steps",
+          "type": "array"
+        },
+        "usage": {
+          "additionalProperties": {
+            "type": "integer"
+          },
+          "title": "Usage",
+          "type": "object"
+        },
+        "validation": {
+          "items": {
+            "$ref": "#/$defs/ValidationCheck"
+          },
+          "title": "Validation",
+          "type": "array"
+        }
+      },
+      "required": [
+        "provider",
+        "model",
+        "route",
+        "steps",
+        "evidence",
+        "selected_evidence",
+        "retrieval",
+        "context_preview",
+        "validation",
+        "attempts",
+        "latency_ms"
+      ],
+      "title": "AgentTrace",
+      "type": "object"
+    },
+    "AssistantReply": {
+      "additionalProperties": false,
+      "description": "Schema the LLM must produce (validated server-side).",
+      "properties": {
+        "evidence_sufficient": {
+          "title": "Evidence Sufficient",
+          "type": "boolean"
+        },
+        "follow_up_questions": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 3,
+          "title": "Follow Up Questions",
+          "type": "array"
+        },
+        "message": {
+          "description": "Plain-language reply to the user",
+          "title": "Message",
+          "type": "string"
+        },
+        "referenced_observations": {
+          "description": "'region:feature' keys of the observations the reply relies on",
+          "items": {
+            "type": "string"
+          },
+          "title": "Referenced Observations",
+          "type": "array"
+        },
+        "suggests_professional": {
+          "title": "Suggests Professional",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "message",
+        "evidence_sufficient",
+        "suggests_professional"
+      ],
+      "title": "AssistantReply",
+      "type": "object"
+    },
+    "ChatMessage": {
+      "additionalProperties": false,
+      "properties": {
+        "content": {
+          "maxLength": 4000,
+          "title": "Content",
+          "type": "string"
+        },
+        "role": {
+          "enum": [
+            "user",
+            "assistant"
+          ],
+          "title": "Role",
+          "type": "string"
+        }
+      },
+      "required": [
+        "role",
+        "content"
+      ],
+      "title": "ChatMessage",
+      "type": "object"
+    },
+    "ChatRequest": {
+      "additionalProperties": false,
+      "properties": {
+        "messages": {
+          "items": {
+            "$ref": "#/$defs/ChatMessage"
+          },
+          "maxItems": 40,
+          "minItems": 1,
+          "title": "Messages",
+          "type": "array"
+        },
+        "observations": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/StructuredObservations"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Fallback if the server holds no observations for this session (e.g. REST-only clients)."
+        },
+        "session_id": {
+          "title": "Session Id",
+          "type": "string"
+        },
+        "user_reported_symptoms": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 20,
+          "title": "User Reported Symptoms",
+          "type": "array"
+        }
+      },
+      "required": [
+        "session_id",
+        "messages"
+      ],
+      "title": "ChatRequest",
+      "type": "object"
+    },
+    "ChatResponse": {
+      "additionalProperties": false,
+      "properties": {
+        "events": {
+          "items": {
+            "$ref": "#/$defs/TelemetryEvent"
+          },
+          "title": "Events",
+          "type": "array"
+        },
+        "reply": {
+          "$ref": "#/$defs/AssistantReply"
+        },
+        "trace": {
+          "$ref": "#/$defs/AgentTrace"
+        }
+      },
+      "required": [
+        "reply",
+        "trace",
+        "events"
+      ],
+      "title": "ChatResponse",
+      "type": "object"
+    },
+    "ClientExplain": {
+      "additionalProperties": false,
+      "properties": {
+        "image_b64": {
+          "title": "Image B64",
+          "type": "string"
+        },
+        "model_id": {
+          "title": "Model Id",
+          "type": "string"
+        },
+        "region": {
+          "$ref": "#/$defs/RegionName"
+        },
+        "request_id": {
+          "title": "Request Id",
+          "type": "string"
+        },
+        "target_class": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Target Class"
+        },
+        "type": {
+          "const": "explain",
+          "default": "explain",
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "request_id",
+        "model_id",
+        "region",
+        "image_b64"
+      ],
+      "title": "ClientExplain",
+      "type": "object"
+    },
+    "ClientFrame": {
+      "additionalProperties": false,
+      "properties": {
+        "captured_at": {
+          "title": "Captured At",
+          "type": "number"
+        },
+        "client_events": {
+          "items": {
+            "$ref": "#/$defs/TelemetryEvent"
+          },
+          "title": "Client Events",
+          "type": "array"
+        },
+        "frame_id": {
+          "title": "Frame Id",
+          "type": "integer"
+        },
+        "options": {
+          "$ref": "#/$defs/FrameOptions"
+        },
+        "quality": {
+          "$ref": "#/$defs/ImageQuality"
+        },
+        "regions": {
+          "items": {
+            "$ref": "#/$defs/RegionCrop"
+          },
+          "title": "Regions",
+          "type": "array"
+        },
+        "type": {
+          "const": "frame",
+          "default": "frame",
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "frame_id",
+        "captured_at",
+        "quality",
+        "regions"
+      ],
+      "title": "ClientFrame",
+      "type": "object"
+    },
+    "ClientHello": {
+      "additionalProperties": false,
+      "properties": {
+        "consent_upload_crops": {
+          "description": "User explicitly opted in to sending cropped face regions to the server",
+          "title": "Consent Upload Crops",
+          "type": "boolean"
+        },
+        "protocol_version": {
+          "default": "1.0.0",
+          "title": "Protocol Version",
+          "type": "string"
+        },
+        "session_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Session Id"
+        },
+        "type": {
+          "const": "hello",
+          "default": "hello",
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "consent_upload_crops"
+      ],
+      "title": "ClientHello",
+      "type": "object"
+    },
+    "ClientPing": {
+      "additionalProperties": false,
+      "properties": {
+        "t": {
+          "title": "T",
+          "type": "number"
+        },
+        "type": {
+          "const": "ping",
+          "default": "ping",
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "t"
+      ],
+      "title": "ClientPing",
+      "type": "object"
+    },
+    "ComparisonResult": {
+      "additionalProperties": false,
+      "properties": {
+        "after": {
+          "$ref": "#/$defs/SnapshotSummary"
+        },
+        "before": {
+          "$ref": "#/$defs/SnapshotSummary"
+        },
+        "caveats": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Caveats",
+          "type": "array"
+        },
+        "regions": {
+          "items": {
+            "$ref": "#/$defs/RegionComparison"
+          },
+          "title": "Regions",
+          "type": "array"
+        }
+      },
+      "required": [
+        "before",
+        "after",
+        "regions",
+        "caveats"
+      ],
+      "title": "ComparisonResult",
+      "type": "object"
+    },
+    "Decision": {
+      "enum": [
+        "accepted",
+        "inconclusive",
+        "abstained",
+        "unavailable"
+      ],
+      "title": "Decision",
+      "type": "string"
+    },
+    "DeletionReport": {
+      "additionalProperties": false,
+      "properties": {
+        "deleted_files": {
+          "title": "Deleted Files",
+          "type": "integer"
+        },
+        "deleted_session_state": {
+          "title": "Deleted Session State",
+          "type": "boolean"
+        },
+        "deleted_snapshots": {
+          "title": "Deleted Snapshots",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "deleted_snapshots",
+        "deleted_files",
+        "deleted_session_state"
+      ],
+      "title": "DeletionReport",
+      "type": "object"
+    },
+    "Explanation": {
+      "additionalProperties": false,
+      "properties": {
+        "caveat": {
+          "title": "Caveat",
+          "type": "string"
+        },
+        "heatmap_b64": {
+          "description": "Colourised attribution map, same size as input, PNG data URL",
+          "title": "Heatmap B64",
+          "type": "string"
+        },
+        "input_b64": {
+          "description": "Model input (de-normalised) as PNG data URL",
+          "title": "Input B64",
+          "type": "string"
+        },
+        "latency_ms": {
+          "title": "Latency Ms",
+          "type": "number"
+        },
+        "method": {
+          "title": "Method",
+          "type": "string"
+        },
+        "model_id": {
+          "title": "Model Id",
+          "type": "string"
+        },
+        "model_version": {
+          "title": "Model Version",
+          "type": "string"
+        },
+        "region": {
+          "$ref": "#/$defs/RegionName"
+        },
+        "request_id": {
+          "title": "Request Id",
+          "type": "string"
+        },
+        "target_class": {
+          "title": "Target Class",
+          "type": "string"
+        },
+        "target_probability": {
+          "title": "Target Probability",
+          "type": "number"
+        },
+        "type": {
+          "const": "explanation",
+          "default": "explanation",
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "request_id",
+        "model_id",
+        "model_version",
+        "region",
+        "method",
+        "target_class",
+        "target_probability",
+        "input_b64",
+        "heatmap_b64",
+        "latency_ms",
+        "caveat"
+      ],
+      "title": "Explanation",
+      "type": "object"
+    },
+    "FrameDropped": {
+      "additionalProperties": false,
+      "properties": {
+        "frame_id": {
+          "title": "Frame Id",
+          "type": "integer"
+        },
+        "reason": {
+          "enum": [
+            "superseded",
+            "queue_full",
+            "invalid",
+            "no_consent"
+          ],
+          "title": "Reason",
+          "type": "string"
+        },
+        "type": {
+          "const": "frame_dropped",
+          "default": "frame_dropped",
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "frame_id",
+        "reason"
+      ],
+      "title": "FrameDropped",
+      "type": "object"
+    },
+    "FrameOptions": {
+      "additionalProperties": false,
+      "properties": {
+        "enabled_models": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Enabled Models"
+        },
+        "return_inputs": {
+          "default": false,
+          "description": "Include raw/tensor previews (Model Lab)",
+          "title": "Return Inputs",
+          "type": "boolean"
+        },
+        "thresholds": {
+          "additionalProperties": {
+            "type": "number"
+          },
+          "description": "Per-model threshold overrides",
+          "title": "Thresholds",
+          "type": "object"
+        }
+      },
+      "title": "FrameOptions",
+      "type": "object"
+    },
+    "ImageInferenceRequest": {
+      "additionalProperties": false,
+      "properties": {
+        "consent_upload": {
+          "title": "Consent Upload",
+          "type": "boolean"
+        },
+        "image_b64": {
+          "description": "Full frame. Only sent with explicit consent.",
+          "title": "Image B64",
+          "type": "string"
+        },
+        "landmarks": {
+          "description": "478 x [x,y,z] normalised MediaPipe landmarks",
+          "items": {
+            "items": {
+              "type": "number"
+            },
+            "type": "array"
+          },
+          "title": "Landmarks",
+          "type": "array"
+        },
+        "options": {
+          "$ref": "#/$defs/FrameOptions"
+        },
+        "session_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Session Id"
+        }
+      },
+      "required": [
+        "image_b64",
+        "landmarks",
+        "consent_upload"
+      ],
+      "title": "ImageInferenceRequest",
+      "type": "object"
+    },
+    "ImageQuality": {
+      "additionalProperties": false,
+      "properties": {
+        "issues": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Issues",
+          "type": "array"
+        },
+        "metrics": {
+          "$ref": "#/$defs/QualityMetrics"
+        },
+        "status": {
+          "$ref": "#/$defs/QualityStatus"
+        }
+      },
+      "required": [
+        "status"
+      ],
+      "title": "ImageQuality",
+      "type": "object"
+    },
+    "InferenceResult": {
+      "additionalProperties": false,
+      "properties": {
+        "captured_at": {
+          "title": "Captured At",
+          "type": "number"
+        },
+        "completed_at": {
+          "title": "Completed At",
+          "type": "number"
+        },
+        "events": {
+          "items": {
+            "$ref": "#/$defs/TelemetryEvent"
+          },
+          "title": "Events",
+          "type": "array"
+        },
+        "frame_id": {
+          "title": "Frame Id",
+          "type": "integer"
+        },
+        "image_quality": {
+          "$ref": "#/$defs/ImageQuality"
+        },
+        "observations": {
+          "$ref": "#/$defs/StructuredObservations"
+        },
+        "predictions": {
+          "items": {
+            "$ref": "#/$defs/Prediction"
+          },
+          "title": "Predictions",
+          "type": "array"
+        },
+        "queue_wait_ms": {
+          "title": "Queue Wait Ms",
+          "type": "number"
+        },
+        "received_at": {
+          "title": "Received At",
+          "type": "number"
+        },
+        "session_id": {
+          "title": "Session Id",
+          "type": "string"
+        },
+        "type": {
+          "const": "inference_result",
+          "default": "inference_result",
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "session_id",
+        "frame_id",
+        "captured_at",
+        "received_at",
+        "completed_at",
+        "queue_wait_ms",
+        "image_quality",
+        "predictions",
+        "observations",
+        "events"
+      ],
+      "title": "InferenceResult",
+      "type": "object"
+    },
+    "ModelInfo": {
+      "additionalProperties": false,
+      "properties": {
+        "backbone": {
+          "title": "Backbone",
+          "type": "string"
+        },
+        "classes": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Classes",
+          "type": "array"
+        },
+        "default_threshold": {
+          "title": "Default Threshold",
+          "type": "number"
+        },
+        "explainable": {
+          "title": "Explainable",
+          "type": "boolean"
+        },
+        "feature": {
+          "description": "Observable feature, e.g. 'visible_dryness'",
+          "title": "Feature",
+          "type": "string"
+        },
+        "input_size": {
+          "title": "Input Size",
+          "type": "integer"
+        },
+        "metrics": {
+          "additionalProperties": true,
+          "title": "Metrics",
+          "type": "object"
+        },
+        "model_id": {
+          "title": "Model Id",
+          "type": "string"
+        },
+        "normalization": {
+          "additionalProperties": {
+            "items": {
+              "type": "number"
+            },
+            "type": "array"
+          },
+          "title": "Normalization",
+          "type": "object"
+        },
+        "positive_class": {
+          "title": "Positive Class",
+          "type": "string"
+        },
+        "regions": {
+          "items": {
+            "$ref": "#/$defs/RegionName"
+          },
+          "title": "Regions",
+          "type": "array"
+        },
+        "runtime": {
+          "enum": [
+            "torch",
+            "onnx",
+            "none"
+          ],
+          "title": "Runtime",
+          "type": "string"
+        },
+        "status_message": {
+          "title": "Status Message",
+          "type": "string"
+        },
+        "tier": {
+          "$ref": "#/$defs/ModelTier"
+        },
+        "training_summary": {
+          "additionalProperties": true,
+          "title": "Training Summary",
+          "type": "object"
+        },
+        "version": {
+          "title": "Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "model_id",
+        "version",
+        "tier",
+        "feature",
+        "regions",
+        "classes",
+        "positive_class",
+        "input_size",
+        "normalization",
+        "backbone",
+        "runtime",
+        "default_threshold",
+        "explainable",
+        "status_message"
+      ],
+      "title": "ModelInfo",
+      "type": "object"
+    },
+    "ModelInput": {
+      "additionalProperties": false,
+      "properties": {
+        "raw_preview_b64": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "The received crop (JPEG data URL)",
+          "title": "Raw Preview B64"
+        },
+        "raw_size": {
+          "description": "[w, h] of the received crop in pixels",
+          "items": {
+            "type": "integer"
+          },
+          "title": "Raw Size",
+          "type": "array"
+        },
+        "tensor": {
+          "$ref": "#/$defs/TensorStats"
+        },
+        "tensor_preview_b64": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "De-normalised model input tensor rendered losslessly (PNG data URL)",
+          "title": "Tensor Preview B64"
+        },
+        "transforms": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Transforms",
+          "type": "array"
+        }
+      },
+      "required": [
+        "raw_size",
+        "tensor",
+        "transforms"
+      ],
+      "title": "ModelInput",
+      "type": "object"
+    },
+    "ModelTier": {
+      "description": "How much a model's output may be trusted.\n\n* ``demo`` \u2013 trained on synthetic data only. Exercises the pipeline; its\n  outputs are NOT observations about a real face.\n* ``validated`` \u2013 has an evaluation report on appropriately sourced,\n  labelled data (still not clinical validation).\n* ``unavailable`` \u2013 no weights loaded.",
+      "enum": [
+        "demo",
+        "validated",
+        "unavailable"
+      ],
+      "title": "ModelTier",
+      "type": "string"
+    },
+    "Observation": {
+      "additionalProperties": false,
+      "properties": {
+        "confidence": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Classifier score for the positive class, aggregated over recent frames. NOT a probability of any medical condition.",
+          "title": "Confidence"
+        },
+        "feature": {
+          "title": "Feature",
+          "type": "string"
+        },
+        "frames_aggregated": {
+          "title": "Frames Aggregated",
+          "type": "integer"
+        },
+        "model_id": {
+          "title": "Model Id",
+          "type": "string"
+        },
+        "model_tier": {
+          "$ref": "#/$defs/ModelTier"
+        },
+        "model_version": {
+          "title": "Model Version",
+          "type": "string"
+        },
+        "present": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "True if the accepted top class is the positive (visible-feature) class",
+          "title": "Present"
+        },
+        "region": {
+          "$ref": "#/$defs/RegionName"
+        },
+        "status": {
+          "enum": [
+            "accepted",
+            "inconclusive",
+            "abstained",
+            "unavailable"
+          ],
+          "title": "Status",
+          "type": "string"
+        }
+      },
+      "required": [
+        "region",
+        "feature",
+        "confidence",
+        "status",
+        "present",
+        "model_id",
+        "model_version",
+        "model_tier",
+        "frames_aggregated"
+      ],
+      "title": "Observation",
+      "type": "object"
+    },
+    "PipelineStage": {
+      "enum": [
+        "camera_capture",
+        "image_quality",
+        "face_detection",
+        "landmark_extraction",
+        "region_cropping",
+        "preprocessing",
+        "cv_inference",
+        "structured_observations",
+        "llm_request",
+        "response_validation",
+        "ui_render"
+      ],
+      "title": "PipelineStage",
+      "type": "string"
+    },
+    "Prediction": {
+      "additionalProperties": false,
+      "properties": {
+        "classes": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Classes",
+          "type": "array"
+        },
+        "decision": {
+          "$ref": "#/$defs/Decision"
+        },
+        "decision_reason": {
+          "title": "Decision Reason",
+          "type": "string"
+        },
+        "feature": {
+          "title": "Feature",
+          "type": "string"
+        },
+        "input": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ModelInput"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "latency_ms": {
+          "title": "Latency Ms",
+          "type": "number"
+        },
+        "model_id": {
+          "title": "Model Id",
+          "type": "string"
+        },
+        "model_tier": {
+          "$ref": "#/$defs/ModelTier"
+        },
+        "model_version": {
+          "title": "Model Version",
+          "type": "string"
+        },
+        "positive_probability": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Positive Probability"
+        },
+        "probabilities": {
+          "items": {
+            "type": "number"
+          },
+          "title": "Probabilities",
+          "type": "array"
+        },
+        "region": {
+          "$ref": "#/$defs/RegionName"
+        },
+        "threshold": {
+          "title": "Threshold",
+          "type": "number"
+        },
+        "top_class": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Top Class"
+        },
+        "top_probability": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Top Probability"
+        }
+      },
+      "required": [
+        "model_id",
+        "model_version",
+        "model_tier",
+        "region",
+        "feature",
+        "classes",
+        "probabilities",
+        "top_class",
+        "top_probability",
+        "positive_probability",
+        "threshold",
+        "decision",
+        "decision_reason",
+        "latency_ms"
+      ],
+      "title": "Prediction",
+      "type": "object"
+    },
+    "QualityMetrics": {
+      "additionalProperties": false,
+      "properties": {
+        "brightness": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Mean luma 0..255",
+          "title": "Brightness"
+        },
+        "contrast": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Luma std-dev",
+          "title": "Contrast"
+        },
+        "face_area_fraction": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Face Area Fraction"
+        },
+        "face_count": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Face Count"
+        },
+        "pitch_deg": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Pitch Deg"
+        },
+        "sharpness": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Variance of Laplacian on downscaled gray",
+          "title": "Sharpness"
+        },
+        "yaw_deg": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Yaw Deg"
+        }
+      },
+      "title": "QualityMetrics",
+      "type": "object"
+    },
+    "QualityStatus": {
+      "enum": [
+        "acceptable",
+        "poor",
+        "unusable"
+      ],
+      "title": "QualityStatus",
+      "type": "string"
+    },
+    "RegionComparison": {
+      "additionalProperties": false,
+      "properties": {
+        "after_b64": {
+          "title": "After B64",
+          "type": "string"
+        },
+        "after_observation": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Observation"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "before_b64": {
+          "title": "Before B64",
+          "type": "string"
+        },
+        "before_observation": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Observation"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "diff_b64": {
+          "title": "Diff B64",
+          "type": "string"
+        },
+        "lighting_comparable": {
+          "title": "Lighting Comparable",
+          "type": "boolean"
+        },
+        "lighting_delta": {
+          "title": "Lighting Delta",
+          "type": "number"
+        },
+        "mean_abs_diff": {
+          "title": "Mean Abs Diff",
+          "type": "number"
+        },
+        "region": {
+          "$ref": "#/$defs/RegionName"
+        }
+      },
+      "required": [
+        "region",
+        "before_b64",
+        "after_b64",
+        "diff_b64",
+        "mean_abs_diff",
+        "lighting_delta",
+        "lighting_comparable",
+        "before_observation",
+        "after_observation"
+      ],
+      "title": "RegionComparison",
+      "type": "object"
+    },
+    "RegionCrop": {
+      "additionalProperties": false,
+      "properties": {
+        "bbox": {
+          "description": "[x,y,w,h] normalised to the video frame",
+          "items": {
+            "type": "number"
+          },
+          "maxItems": 4,
+          "minItems": 4,
+          "title": "Bbox",
+          "type": "array"
+        },
+        "image_b64": {
+          "description": "JPEG/PNG data URL or bare base64 of the cropped region",
+          "title": "Image B64",
+          "type": "string"
+        },
+        "region": {
+          "$ref": "#/$defs/RegionName"
+        }
+      },
+      "required": [
+        "region",
+        "bbox",
+        "image_b64"
+      ],
+      "title": "RegionCrop",
+      "type": "object"
+    },
+    "RegionName": {
+      "enum": [
+        "lips",
+        "left_eye",
+        "right_eye",
+        "nose",
+        "skin_forehead",
+        "skin_left_cheek",
+        "skin_right_cheek"
+      ],
+      "title": "RegionName",
+      "type": "string"
+    },
+    "RetrievedDoc": {
+      "additionalProperties": false,
+      "properties": {
+        "doc_id": {
+          "title": "Doc Id",
+          "type": "string"
+        },
+        "review_status": {
+          "title": "Review Status",
+          "type": "string"
+        },
+        "score": {
+          "title": "Score",
+          "type": "number"
+        },
+        "title": {
+          "title": "Title",
+          "type": "string"
+        }
+      },
+      "required": [
+        "doc_id",
+        "title",
+        "score",
+        "review_status"
+      ],
+      "title": "RetrievedDoc",
+      "type": "object"
+    },
+    "ServerError": {
+      "additionalProperties": false,
+      "properties": {
+        "code": {
+          "title": "Code",
+          "type": "string"
+        },
+        "message": {
+          "title": "Message",
+          "type": "string"
+        },
+        "request_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Request Id"
+        },
+        "type": {
+          "const": "error",
+          "default": "error",
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "code",
+        "message"
+      ],
+      "title": "ServerError",
+      "type": "object"
+    },
+    "ServerHelloAck": {
+      "additionalProperties": false,
+      "properties": {
+        "max_queue": {
+          "title": "Max Queue",
+          "type": "integer"
+        },
+        "models": {
+          "items": {
+            "$ref": "#/$defs/ModelInfo"
+          },
+          "title": "Models",
+          "type": "array"
+        },
+        "protocol_version": {
+          "default": "1.0.0",
+          "title": "Protocol Version",
+          "type": "string"
+        },
+        "server_time": {
+          "title": "Server Time",
+          "type": "number"
+        },
+        "session_id": {
+          "title": "Session Id",
+          "type": "string"
+        },
+        "type": {
+          "const": "hello_ack",
+          "default": "hello_ack",
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "session_id",
+        "models",
+        "server_time",
+        "max_queue"
+      ],
+      "title": "ServerHelloAck",
+      "type": "object"
+    },
+    "ServerMetrics": {
+      "additionalProperties": false,
+      "properties": {
+        "cpu_percent": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Cpu Percent"
+        },
+        "device": {
+          "title": "Device",
+          "type": "string"
+        },
+        "frames_dropped": {
+          "title": "Frames Dropped",
+          "type": "integer"
+        },
+        "frames_processed": {
+          "title": "Frames Processed",
+          "type": "integer"
+        },
+        "frames_received": {
+          "title": "Frames Received",
+          "type": "integer"
+        },
+        "frames_rejected": {
+          "title": "Frames Rejected",
+          "type": "integer"
+        },
+        "queue_depth": {
+          "title": "Queue Depth",
+          "type": "integer"
+        },
+        "rss_mb": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Rss Mb"
+        },
+        "t": {
+          "title": "T",
+          "type": "number"
+        },
+        "type": {
+          "const": "server_metrics",
+          "default": "server_metrics",
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "t",
+        "cpu_percent",
+        "rss_mb",
+        "frames_received",
+        "frames_processed",
+        "frames_dropped",
+        "frames_rejected",
+        "queue_depth",
+        "device"
+      ],
+      "title": "ServerMetrics",
+      "type": "object"
+    },
+    "ServerPong": {
+      "additionalProperties": false,
+      "properties": {
+        "server_time": {
+          "title": "Server Time",
+          "type": "number"
+        },
+        "t": {
+          "title": "T",
+          "type": "number"
+        },
+        "type": {
+          "const": "pong",
+          "default": "pong",
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "t",
+        "server_time"
+      ],
+      "title": "ServerPong",
+      "type": "object"
+    },
+    "SessionCreated": {
+      "additionalProperties": false,
+      "properties": {
+        "created_at": {
+          "title": "Created At",
+          "type": "number"
+        },
+        "session_id": {
+          "title": "Session Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "session_id",
+        "created_at"
+      ],
+      "title": "SessionCreated",
+      "type": "object"
+    },
+    "SnapshotCreate": {
+      "additionalProperties": false,
+      "properties": {
+        "consent_store_images": {
+          "title": "Consent Store Images",
+          "type": "boolean"
+        },
+        "consent_text_version": {
+          "title": "Consent Text Version",
+          "type": "string"
+        },
+        "history_id": {
+          "description": "Random client-generated pseudonymous id",
+          "maxLength": 64,
+          "minLength": 8,
+          "title": "History Id",
+          "type": "string"
+        },
+        "image_b64": {
+          "title": "Image B64",
+          "type": "string"
+        },
+        "landmarks": {
+          "items": {
+            "items": {
+              "type": "number"
+            },
+            "type": "array"
+          },
+          "title": "Landmarks",
+          "type": "array"
+        },
+        "session_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Session Id"
+        }
+      },
+      "required": [
+        "history_id",
+        "image_b64",
+        "landmarks",
+        "consent_store_images",
+        "consent_text_version"
+      ],
+      "title": "SnapshotCreate",
+      "type": "object"
+    },
+    "SnapshotSummary": {
+      "additionalProperties": false,
+      "properties": {
+        "created_at": {
+          "title": "Created At",
+          "type": "number"
+        },
+        "history_id": {
+          "title": "History Id",
+          "type": "string"
+        },
+        "lighting": {
+          "additionalProperties": {
+            "type": "number"
+          },
+          "title": "Lighting",
+          "type": "object"
+        },
+        "observations": {
+          "items": {
+            "$ref": "#/$defs/Observation"
+          },
+          "title": "Observations",
+          "type": "array"
+        },
+        "quality": {
+          "$ref": "#/$defs/ImageQuality"
+        },
+        "regions": {
+          "items": {
+            "$ref": "#/$defs/RegionName"
+          },
+          "title": "Regions",
+          "type": "array"
+        },
+        "snapshot_id": {
+          "title": "Snapshot Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "snapshot_id",
+        "history_id",
+        "created_at",
+        "quality",
+        "lighting",
+        "observations",
+        "regions"
+      ],
+      "title": "SnapshotSummary",
+      "type": "object"
+    },
+    "StageStatus": {
+      "enum": [
+        "ok",
+        "warning",
+        "error",
+        "skipped"
+      ],
+      "title": "StageStatus",
+      "type": "string"
+    },
+    "StructuredObservations": {
+      "additionalProperties": false,
+      "properties": {
+        "demo_mode": {
+          "description": "True if any contributing model is demo-tier (synthetic training data)",
+          "title": "Demo Mode",
+          "type": "boolean"
+        },
+        "generated_at": {
+          "title": "Generated At",
+          "type": "number"
+        },
+        "image_quality": {
+          "$ref": "#/$defs/QualityStatus"
+        },
+        "medical_diagnosis_requested": {
+          "default": false,
+          "title": "Medical Diagnosis Requested",
+          "type": "boolean"
+        },
+        "observations": {
+          "items": {
+            "$ref": "#/$defs/Observation"
+          },
+          "title": "Observations",
+          "type": "array"
+        },
+        "quality_issues": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Quality Issues",
+          "type": "array"
+        },
+        "user_reported_symptoms": {
+          "items": {
+            "type": "string"
+          },
+          "title": "User Reported Symptoms",
+          "type": "array"
+        }
+      },
+      "required": [
+        "image_quality",
+        "observations",
+        "demo_mode",
+        "generated_at"
+      ],
+      "title": "StructuredObservations",
+      "type": "object"
+    },
+    "TelemetryEvent": {
+      "additionalProperties": false,
+      "properties": {
+        "duration_ms": {
+          "title": "Duration Ms",
+          "type": "number"
+        },
+        "frame_id": {
+          "description": "Monotonic per-session frame identifier. -1 for non-frame events (e.g. chat).",
+          "title": "Frame Id",
+          "type": "integer"
+        },
+        "input_type": {
+          "title": "Input Type",
+          "type": "string"
+        },
+        "message": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Message"
+        },
+        "model_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Model Id"
+        },
+        "model_version": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Model Version"
+        },
+        "origin": {
+          "enum": [
+            "client",
+            "server"
+          ],
+          "title": "Origin",
+          "type": "string"
+        },
+        "output_type": {
+          "title": "Output Type",
+          "type": "string"
+        },
+        "seq": {
+          "default": 0,
+          "description": "Per-origin monotonic sequence number used to verify ordering",
+          "title": "Seq",
+          "type": "integer"
+        },
+        "session_id": {
+          "title": "Session Id",
+          "type": "string"
+        },
+        "stage": {
+          "$ref": "#/$defs/PipelineStage"
+        },
+        "started_at": {
+          "description": "Epoch ms",
+          "title": "Started At",
+          "type": "number"
+        },
+        "status": {
+          "$ref": "#/$defs/StageStatus"
+        }
+      },
+      "required": [
+        "session_id",
+        "frame_id",
+        "stage",
+        "status",
+        "origin",
+        "started_at",
+        "duration_ms",
+        "input_type",
+        "output_type"
+      ],
+      "title": "TelemetryEvent",
+      "type": "object"
+    },
+    "TensorStats": {
+      "additionalProperties": false,
+      "properties": {
+        "channel_mean": {
+          "items": {
+            "type": "number"
+          },
+          "title": "Channel Mean",
+          "type": "array"
+        },
+        "channel_std": {
+          "items": {
+            "type": "number"
+          },
+          "title": "Channel Std",
+          "type": "array"
+        },
+        "dtype": {
+          "title": "Dtype",
+          "type": "string"
+        },
+        "max": {
+          "title": "Max",
+          "type": "number"
+        },
+        "min": {
+          "title": "Min",
+          "type": "number"
+        },
+        "shape": {
+          "items": {
+            "type": "integer"
+          },
+          "title": "Shape",
+          "type": "array"
+        }
+      },
+      "required": [
+        "shape",
+        "dtype",
+        "channel_mean",
+        "channel_std",
+        "min",
+        "max"
+      ],
+      "title": "TensorStats",
+      "type": "object"
+    },
+    "TraceStep": {
+      "additionalProperties": false,
+      "properties": {
+        "detail": {
+          "additionalProperties": true,
+          "title": "Detail",
+          "type": "object"
+        },
+        "duration_ms": {
+          "title": "Duration Ms",
+          "type": "number"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/$defs/StageStatus"
+        }
+      },
+      "required": [
+        "name",
+        "status",
+        "duration_ms"
+      ],
+      "title": "TraceStep",
+      "type": "object"
+    },
+    "ValidationCheck": {
+      "additionalProperties": false,
+      "properties": {
+        "detail": {
+          "default": "",
+          "title": "Detail",
+          "type": "string"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "passed": {
+          "title": "Passed",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "name",
+        "passed"
+      ],
+      "title": "ValidationCheck",
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "AI Health Mirror wire protocol",
+  "version": "1.0.0"
+}

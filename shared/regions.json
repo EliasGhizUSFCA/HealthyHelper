@@ -1,0 +1,66 @@
+{
+  "$comment": "Single source of truth for facial region extraction. Indices refer to the 478-point MediaPipe Face Landmarker topology. 'left'/'right' are from the SUBJECT's perspective (MediaPipe convention), not the viewer's. Consumed by frontend/lib/regions.ts and backend/app/cv/regions.py.",
+  "version": "1.0.0",
+  "regions": {
+    "lips": {
+      "label": "Lips",
+      "landmarks": [61, 146, 91, 181, 84, 17, 314, 405, 321, 375, 291, 409, 270, 269, 267, 0, 37, 39, 40, 185],
+      "margin": 0.25,
+      "square": true,
+      "min_size_px": 24
+    },
+    "left_eye": {
+      "label": "Left eye",
+      "landmarks": [263, 249, 390, 373, 374, 380, 381, 382, 362, 398, 384, 385, 386, 387, 388, 466],
+      "margin": 0.35,
+      "square": true,
+      "min_size_px": 20
+    },
+    "right_eye": {
+      "label": "Right eye",
+      "landmarks": [33, 7, 163, 144, 145, 153, 154, 155, 133, 173, 157, 158, 159, 160, 161, 246],
+      "margin": 0.35,
+      "square": true,
+      "min_size_px": 20
+    },
+    "nose": {
+      "label": "Nose",
+      "landmarks": [1, 2, 4, 5, 6, 48, 64, 98, 129, 168, 195, 197, 278, 294, 327, 358],
+      "margin": 0.15,
+      "square": true,
+      "min_size_px": 24
+    },
+    "skin_forehead": {
+      "label": "Forehead skin",
+      "landmarks": [10, 67, 69, 108, 109, 151, 297, 299, 337, 338],
+      "margin": 0.0,
+      "square": true,
+      "min_size_px": 24
+    },
+    "skin_left_cheek": {
+      "label": "Left cheek skin",
+      "landmarks": [280, 330, 346, 347, 352, 411, 425],
+      "margin": 0.05,
+      "square": true,
+      "min_size_px": 24
+    },
+    "skin_right_cheek": {
+      "label": "Right cheek skin",
+      "landmarks": [50, 101, 117, 118, 123, 187, 205],
+      "margin": 0.05,
+      "square": true,
+      "min_size_px": 24
+    }
+  },
+  "alignment": {
+    "$comment": "Canonical positions (in a 256x256 aligned face image) for similarity-transform face alignment used by longitudinal comparison.",
+    "output_size": 256,
+    "anchors": {
+      "33": [80, 100],
+      "263": [176, 100],
+      "1": [128, 150],
+      "61": [96, 190],
+      "291": [160, 190]
+    }
+  }
+}
