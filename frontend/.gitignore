@@ -1,0 +1,9 @@
+node_modules/
+.next/
+out/
+coverage/
+public/mediapipe/
+public/models/
+.env*.local
+.env
+*.tsbuildinfo

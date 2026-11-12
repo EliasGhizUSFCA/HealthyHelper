@@ -4,7 +4,7 @@ PY ?= python3
 setup:
 	$(PY) -m pip install torch==2.15.0 torchvision==0.29.2 --index-url https://download.pytorch.org/whl/cpu
 	$(PY) -m pip install -r backend/requirements-dev.txt
-	cd frontend && npm ci
+	cd frontend && npm ci && npm run setup:assets
 
 backend:
 	cd backend && $(PY) -m uvicorn app.main:app --reload --port 8000

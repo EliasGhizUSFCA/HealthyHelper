@@ -68,3 +68,28 @@ def test_region_difference_is_lighting_normalised():
     _, diff = region_difference(a, other)
     assert same == 0.0
     assert lit < diff / 3  # uniform exposure change ≪ structural change
+
+
+def test_edge_boxes_are_shifted_inside_not_clipped():
+    """Matches frontend computeRegionBox: at frame edges the square keeps its size and moves inward."""
+    from app.cv.regions import region_specs
+
+    W, H = 320, 240
+    centred = synthetic_landmarks()
+    edge = synthetic_landmarks(cx=0.05, cy=0.5)
+    spec = region_specs()["right_eye"]
+    _, _, w0, h0 = region_bbox_px(centred, spec, W, H)
+    x, y, w, h = region_bbox_px(edge, spec, W, H)
+    assert x == 0 and w == h and abs(w - w0) <= 1
+
+
+def test_matches_frontend_reference_values():
+    """Hand-computed with the TS algorithm: lips landmarks spanning x 100..140, y 50..60 px, margin 0.25."""
+    from app.cv.regions import RegionSpec
+
+    spec = RegionSpec("t", "t", (0, 1), margin=0.25, square=True, min_size_px=10)
+    lm = np.zeros((2, 3))
+    lm[0, :2] = (100 / 200, 50 / 100)
+    lm[1, :2] = (140 / 200, 60 / 100)
+    # w=40*1.5=60, h=10*1.5=15 → side 60 (≤ frame 200x100); centre (120,55) → x=90, y=25
+    assert region_bbox_px(lm, spec, 200, 100) == (90, 25, 60, 60)

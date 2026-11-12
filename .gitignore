@@ -19,7 +19,6 @@ out/
 frontend/public/mediapipe/
 frontend/public/models/
 *.tsbuildinfo
-next-env.d.ts
 # Env
 .env
 .env.local

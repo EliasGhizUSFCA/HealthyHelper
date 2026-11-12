@@ -50,28 +50,32 @@ def region_specs(path: str | None = None) -> dict[str, RegionSpec]:
 def region_bbox_px(landmarks: np.ndarray, spec: RegionSpec, width: int, height: int) -> tuple[int, int, int, int]:
     """Pixel bbox (x, y, w, h) for a region from normalised landmarks (N, >=2).
 
-    Steps: tight bbox of the region's landmarks → expand by ``margin`` on each side
-    → optionally square it around its centre → clamp to the frame. Mirrors
-    ``regionBBox`` in frontend/lib/regions.ts exactly.
+    Identical maths to ``computeRegionBox`` in frontend/lib/regions.ts:
+    tight bbox of the region's landmarks → expand by ``margin`` on each side
+    around its centre → if square, side = min(max(w, h), frame_w, frame_h) →
+    *shift* (not clip) the box so it lies inside the frame. Shifting keeps crops
+    square and full-size at frame edges. Regions smaller than ``min_size_px``
+    are reported by :func:`region_is_valid`.
     """
     pts = landmarks[list(spec.landmarks), :2] * np.array([width, height], dtype=np.float64)
     x0, y0 = pts.min(axis=0)
     x1, y1 = pts.max(axis=0)
-    w, h = x1 - x0, y1 - y0
-    x0 -= w * spec.margin
-    x1 += w * spec.margin
-    y0 -= h * spec.margin
-    y1 += h * spec.margin
+    cx, cy = (x0 + x1) / 2, (y0 + y1) / 2
+    w = (x1 - x0) * (1 + 2 * spec.margin)
+    h = (y1 - y0) * (1 + 2 * spec.margin)
     if spec.square:
-        cx, cy = (x0 + x1) / 2, (y0 + y1) / 2
-        side = max(x1 - x0, y1 - y0, float(spec.min_size_px))
-        x0, x1 = cx - side / 2, cx + side / 2
-        y0, y1 = cy - side / 2, cy + side / 2
-    xi0 = int(max(0, np.floor(x0)))
-    yi0 = int(max(0, np.floor(y0)))
-    xi1 = int(min(width, np.ceil(x1)))
-    yi1 = int(min(height, np.ceil(y1)))
-    return xi0, yi0, max(0, xi1 - xi0), max(0, yi1 - yi0)
+        w = h = min(max(w, h), float(width), float(height))
+    else:
+        w, h = min(w, float(width)), min(h, float(height))
+    x = min(max(cx - w / 2, 0.0), width - w)
+    y = min(max(cy - h / 2, 0.0), height - h)
+    xi, yi = int(round(x)), int(round(y))
+    wi, hi = int(round(w)), int(round(h))
+    return xi, yi, min(wi, width - xi), min(hi, height - yi)
+
+
+def region_is_valid(bbox: tuple[int, int, int, int], spec: RegionSpec) -> bool:
+    return min(bbox[2], bbox[3]) >= spec.min_size_px
 
 
 def crop_regions(image: np.ndarray, landmarks: np.ndarray, names: list[str] | None = None) -> dict[str, tuple[np.ndarray, list[float]]]:
@@ -83,7 +87,7 @@ def crop_regions(image: np.ndarray, landmarks: np.ndarray, names: list[str] | No
         if names and name not in names:
             continue
         x, y, bw, bh = region_bbox_px(landmarks, spec, w, h)
-        if bw < 2 or bh < 2:
+        if not region_is_valid((x, y, bw, bh), spec):
             continue
         out[name] = (image[y : y + bh, x : x + bw].copy(), [x / w, y / h, bw / w, bh / h])
     return out
