@@ -17,8 +17,35 @@ async function localModelAvailable(): Promise<boolean> {
   }
 }
 
+/**
+ * MediaPipe's WASM runtime writes routine INFO logs (e.g. "INFO: Created TensorFlow Lite XNNPACK
+ * delegate for CPU.") to stderr, which Emscripten maps to console.error. Next.js dev then reports
+ * them as "Console Error". Only those informational lines are dropped; real errors pass through.
+ */
+export function isBenignMediapipeLog(args: unknown[]): boolean {
+  const first = args[0];
+  if (typeof first !== "string") return false;
+  // "INFO: ..." from TFLite, or glog info lines like "I1113 00:08:54.094 ... file.cc:123] ..."
+  return /^INFO: /.test(first) || /^I\d{4} \d{2}:\d{2}:\d{2}/.test(first);
+}
+
+let consoleFilterInstalled = false;
+function installMediapipeLogFilter(): void {
+  if (consoleFilterInstalled || typeof console === "undefined") return;
+  consoleFilterInstalled = true;
+  const original = console.error.bind(console);
+  console.error = (...args: unknown[]) => {
+    if (isBenignMediapipeLog(args)) {
+      console.debug(...args);
+      return;
+    }
+    original(...args);
+  };
+}
+
 /** Load MediaPipe Face Landmarker in VIDEO mode. Tries GPU, falls back to CPU. Browser only. */
 export async function loadFaceLandmarker(): Promise<LoadedLandmarker> {
+  installMediapipeLogFilter();
   const t0 = performance.now();
   const vision = await import("@mediapipe/tasks-vision");
   const fileset = await vision.FilesetResolver.forVisionTasks(new URL(MEDIAPIPE_WASM, window.location.origin).toString());
