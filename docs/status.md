@@ -50,4 +50,3 @@ or partially · ⛔ not done (see "Open items").
 5. Optional server-side landmarking for clients without WASM support.
 6. Triage is keyword-based; a reviewed classifier would improve recall on paraphrases.
 7. A committed Playwright E2E suite (the E2E checks so far were run as ad-hoc scripts).
-8. Next dev overlay shows "1 issue" because MediaPipe logs an INFO line via `console.error` (harmless).
