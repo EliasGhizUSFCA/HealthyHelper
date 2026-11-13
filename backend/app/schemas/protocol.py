@@ -42,6 +42,7 @@ class RegionName(str, Enum):
     skin_chin = "skin_chin"
     left_undereye = "left_undereye"
     right_undereye = "right_undereye"
+    face = "face"
 
 
 class PipelineStage(str, Enum):
@@ -51,8 +52,12 @@ class PipelineStage(str, Enum):
     landmark_extraction = "landmark_extraction"
     region_cropping = "region_cropping"
     preprocessing = "preprocessing"
+    age_estimation = "age_estimation"
     cv_inference = "cv_inference"
     structured_observations = "structured_observations"
+    user_preferences = "user_preferences"
+    product_retrieval = "product_retrieval"
+    product_ranking = "product_ranking"
     llm_request = "llm_request"
     response_validation = "response_validation"
     ui_render = "ui_render"
@@ -119,6 +124,9 @@ class TelemetryEvent(_Model):
     model_version: str | None = None
     message: str | None = None
     seq: int = Field(0, description="Per-origin monotonic sequence number used to verify ordering")
+    event_id: str | None = Field(None, description="Unique id (uuid4 hex) assigned by the emitter")
+    output: dict[str, Any] | None = Field(None, description="Small structured summary of the stage output")
+    error: str | None = Field(None, description="Error detail when status == 'error'")
 
 
 # --------------------------------------------------------------------------- #
@@ -245,6 +253,7 @@ class FrameOptions(_Model):
     return_inputs: bool = Field(False, description="Include raw/tensor previews (Model Lab)")
     thresholds: dict[str, float] = Field(default_factory=dict, description="Per-model threshold overrides")
     enabled_models: list[str] | None = None
+    enable_age: bool = Field(False, description="User opted in to apparent-age estimation for this frame (default off)")
 
 
 class ClientHello(_Model):
@@ -290,6 +299,27 @@ class ServerHelloAck(_Model):
     max_queue: int
 
 
+class AgeEstimate(_Model):
+    """Apparent-age range estimate. Never stored, never sent to the LLM, never used for recommendations
+    (only a range the USER confirms may be used, and only for age-appropriateness filtering)."""
+
+    model_id: str
+    model_version: str
+    model_tier: ModelTier
+    classes: list[str]
+    probabilities: list[float]
+    top_range: str | None
+    top_probability: float | None
+    expected_age_years: float | None = Field(description="Probability-weighted mean of range midpoints (approximate)")
+    plausible_ranges: list[str] = Field(description="Smallest run of adjacent ranges holding >= 80% probability")
+    entropy_bits: float | None
+    decision: Decision
+    decision_reason: str
+    latency_ms: float
+    input: ModelInput | None = None
+    disclaimer: str
+
+
 class InferenceResult(_Model):
     type: Literal["inference_result"] = "inference_result"
     session_id: str
@@ -302,6 +332,7 @@ class InferenceResult(_Model):
     predictions: list[Prediction]
     observations: StructuredObservations
     events: list[TelemetryEvent]
+    age: AgeEstimate | None = None
 
 
 class FrameDropped(_Model):
@@ -374,6 +405,7 @@ class ChatRequest(_Model):
     observations: StructuredObservations | None = Field(
         None, description="Fallback if the server holds no observations for this session (e.g. REST-only clients)."
     )
+    product_ids: list[str] = Field(default_factory=list, max_length=6, description="Catalogue products the user selected to discuss")
 
 
 class AssistantReply(_Model):

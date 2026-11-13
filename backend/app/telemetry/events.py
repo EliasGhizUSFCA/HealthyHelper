@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import itertools
 import threading
+import uuid
 from collections.abc import Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass, field
@@ -55,6 +56,7 @@ class EventRecorder:
                 session_id=self.session_id, frame_id=self.frame_id, stage=stage, status=h.status, origin="server",
                 started_at=started, duration_ms=round(dur, 3), input_type=it, output_type=ot,
                 model_id=h.model_id, model_version=h.model_version, message=h.message, seq=next(self._counter),
+                event_id=uuid.uuid4().hex, error=h.message if h.status == StageStatus.error else None,
             )
         )
 

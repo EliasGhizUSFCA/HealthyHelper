@@ -15,13 +15,21 @@ class CatalogEntry:
     model_id: str
     feature: str
     regions: tuple[str, ...]
-    classes: tuple[str, str]  # (positive, negative)
+    classes: tuple[str, ...]  # binary features: (positive, negative); age: ordered ranges
     description: str
     default_threshold: float = 0.7
     input_size: int = 128
+    task: str = "binary_feature"  # "binary_feature" | "age_range"
 
+
+AGE_RANGES = ("under_20", "20_29", "30_39", "40_49", "50_59", "60_plus")
+AGE_MIDPOINTS = {"under_20": 14.0, "20_29": 25.0, "30_39": 35.0, "40_49": 45.0, "50_59": 55.0, "60_plus": 67.0}
 
 SKIN = ("skin_forehead", "skin_left_cheek", "skin_right_cheek", "skin_chin")
+
+def feature_models() -> list[str]:
+    return [m for m, e in CATALOG.items() if e.task == "binary_feature"]
+
 
 CATALOG: dict[str, CatalogEntry] = {
     e.model_id: e
@@ -65,6 +73,12 @@ CATALOG: dict[str, CatalogEntry] = {
             "undereye_darkness", "visible_darkness", ("left_undereye", "right_undereye"),
             ("visible_darkness", "no_clear_darkness"),
             "Visibly darker skin under the eyes (dark circles); strongly affected by lighting and natural skin tone.",
+        ),
+        CatalogEntry(
+            "apparent_age", "apparent_age_range", ("face",),
+            AGE_RANGES,
+            "Broad APPARENT-age range (how old a face looks to annotators), opt-in only. Not chronological age, not for identity or access decisions.",
+            default_threshold=0.5, input_size=112, task="age_range",
         ),
     ]
 }

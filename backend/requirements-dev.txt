@@ -7,3 +7,5 @@ onnxscript==0.7.2
 pytest==9.2.0
 httpx==0.28.1
 ruff==0.17.5
+pyarrow==26.0.1
+pillow==12.3.0

@@ -38,6 +38,33 @@ Environment variables (see `backend/app/config.py`):
 | `LLM_EFFORT` | `low` | Claude effort level for chat replies |
 | `ANTHROPIC_API_KEY` | – | server-side only |
 | `LOG_SENSITIVE_CONTENT` | `false` | never enable in production |
+| `LLM_PROVIDER=ollama`, `OLLAMA_MODEL`, `OLLAMA_URL` | `llama3.1`, `http://localhost:11434` | open-weight alternative (structured JSON output via Ollama) |
+| `CATALOG_CRAWL_ENABLED` | `true` | kill switch for every retailer request |
+| `CATALOG_MIN_INTERVAL_S` | `2.0` | minimum seconds between retailer requests (robots Crawl-delay wins if larger) |
+| `CATALOG_STALE_AFTER_HOURS` | `72` | listings older than this are flagged stale |
+| `RECOMMENDER_WEIGHTS` | – | JSON overrides for ranking weights, e.g. `{"concern_match": 3}` |
+| `DEV_API_TOKEN` | – | **set in deployment**: required (`X-Dev-Token`) for crawl log and refresh endpoints |
+
+## Catalogue refresh
+
+```bash
+cd backend
+python -m app.recommendations.catalog.refresh --per-category 25     # polite, robots-checked, ~12 min
+python -m app.recommendations.catalog.reextract                    # re-run attribute rules on stored products (no network)
+python -m app.recommendations.catalog.feed products.jsonl          # or ingest an authorised feed instead
+```
+
+Schedule the refresh at most daily (e.g. an Azure Container Apps job or cron) — incremental runs skip pages
+whose sitemap `lastmod` hasn't changed. It can also be triggered from Model Lab (needs the dev token).
+
+## Age model
+
+```bash
+cd backend
+python -m training.datasets.fairface --src ../data/external/fairface --out ../data/age/fairface   # after downloading FairFace (CC BY 4.0)
+python -m training.train --model-id apparent_age --manifest ../data/age/fairface/manifest.csv --backbone resnet18 --pretrained \
+  --tier experimental --input-size 112 --epochs 6 --split-column ff_split
+```
 
 ## Azure (example: Container Apps)
 

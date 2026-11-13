@@ -24,6 +24,7 @@ def synthetic_landmarks(cx: float = 0.5, cy: float = 0.5, scale: float = 0.3, an
         "nose": (0.0, 0.08, 0.07, 0.1), "skin_forehead": (0.0, -0.38, 0.12, 0.06),
         "skin_left_cheek": (0.24, 0.12, 0.06, 0.06), "skin_right_cheek": (-0.24, 0.12, 0.06, 0.06),
         "left_undereye": (0.18, -0.03, 0.07, 0.03), "right_undereye": (-0.18, -0.03, 0.07, 0.03), "skin_chin": (0.0, 0.42, 0.07, 0.04),
+        "face": (0.0, 0.0, 0.42, 0.48),
     }
     for name, spec in region_specs().items():
         ox, oy, sx, sy = layout[name]
@@ -54,11 +55,11 @@ def make_artifact(root: Path, model_id: str = "lip_dryness", backbone: str = "sm
     e = CATALOG[model_id]
     d = root / model_id / "0.0.1-test"
     d.mkdir(parents=True, exist_ok=True)
-    m = build_model(backbone, 2)
+    m = build_model(backbone, len(e.classes))
     torch.save(m.state_dict(), d / "weights.pt")
     card = ModelCard(model_id=model_id, version="0.0.1-test", tier="demo", feature=e.feature, regions=list(e.regions), classes=list(e.classes),
                      positive_class=e.classes[0], backbone=backbone, input_size=64, normalization={"mean": list(IMAGENET_MEAN), "std": list(IMAGENET_STD)},
-                     default_threshold=0.5, created_at=time.strftime("%Y-%m-%dT%H:%M:%SZ"))
+                     default_threshold=0.5, created_at=time.strftime("%Y-%m-%dT%H:%M:%SZ"), task=e.task)
     (d / "model_card.json").write_text(card.model_dump_json())
     return d
 

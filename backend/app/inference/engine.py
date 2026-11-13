@@ -16,12 +16,14 @@ import numpy as np
 from app.config import Settings, get_settings
 from app.cv import quality as q
 from app.cv.imaging import ImageDecodeError, decode_data_url, encode_jpeg_data_url, encode_png_data_url
+from app.inference.age import AGE_DISCLAIMER, summarize_age
 from app.inference.catalog import CATALOG
 from app.inference.decision import decide
 from app.inference.gradcam import CAVEAT, grad_cam
 from app.inference.preprocess import denormalize, preprocess, tensor_stats
 from app.inference.registry import ModelRegistry
 from app.schemas.protocol import (
+    AgeEstimate,
     ClientExplain,
     ClientFrame,
     Decision,
@@ -71,7 +73,7 @@ class InferenceEngine:
             if frame_unusable:
                 h.skip("frame quality unusable")
             else:
-                for lm in self.registry.loaded():
+                for lm in self._feature_models():
                     if opts.enabled_models is not None and lm.card.model_id not in opts.enabled_models:
                         continue
                     for region in lm.card.regions:
@@ -80,7 +82,8 @@ class InferenceEngine:
 
         # 3. inference, batched per model
         predictions: list[Prediction] = []
-        for lm in self.registry.loaded():
+        age = self._age(rec, opts, decoded, crop_quality, frame_unusable)
+        for lm in self._feature_models():
             mid = lm.card.model_id
             if opts.enabled_models is not None and mid not in opts.enabled_models:
                 continue
@@ -122,7 +125,7 @@ class InferenceEngine:
         # catalogue models with no weights → explicit "unavailable" (never fabricated scores)
         loaded_ids = {m.card.model_id for m in self.registry.loaded()}
         for mid, entry in CATALOG.items():
-            if mid in loaded_ids or (opts.enabled_models is not None and mid not in opts.enabled_models):
+            if entry.task != "binary_feature" or mid in loaded_ids or (opts.enabled_models is not None and mid not in opts.enabled_models):
                 continue
             for region in entry.regions:
                 if region in decoded:
@@ -144,8 +147,39 @@ class InferenceEngine:
         return InferenceResult(
             session_id=state.session_id, frame_id=frame.frame_id, captured_at=frame.captured_at, received_at=received_at,
             completed_at=now_ms(), queue_wait_ms=round(queue_wait_ms, 3), image_quality=overall, predictions=predictions,
-            observations=observations, events=rec.events,
+            observations=observations, events=rec.events, age=age,
         )
+
+    def _feature_models(self):
+        return [m for m in self.registry.loaded() if getattr(m.card, "task", "binary_feature") == "binary_feature"]
+
+    def _age(self, rec, opts, decoded, crop_quality, frame_unusable) -> AgeEstimate | None:
+        """Opt-in apparent-age range. Runs only when the user enabled it and a face crop was sent."""
+        if not opts.enable_age:
+            if "face" in decoded:
+                decoded.pop("face")  # never process a face crop without opt-in
+            return None
+        entry = CATALOG["apparent_age"]
+        lm = self.registry.get("apparent_age")
+        if lm is None:
+            rec.skipped(PipelineStage.age_estimation, "face crop", "AgeEstimate", "age model not loaded")
+            return AgeEstimate(model_id="apparent_age", model_version="none", model_tier=ModelTier.unavailable, classes=list(entry.classes),
+                               probabilities=[], top_range=None, top_probability=None, expected_age_years=None, plausible_ranges=[], entropy_bits=None,
+                               decision=Decision.unavailable, decision_reason="model not loaded", latency_ms=0.0, disclaimer=AGE_DISCLAIMER)
+        q = crop_quality.get("face")
+        if "face" not in decoded or q is None or frame_unusable or q.status == QualityStatus.unusable.value:
+            reason = "no face crop received" if "face" not in decoded else "quality gate: " + ", ".join((q.issues if q else []) or ["unusable"])
+            rec.skipped(PipelineStage.age_estimation, "face crop", "AgeEstimate", reason)
+            return AgeEstimate(model_id=lm.card.model_id, model_version=lm.card.version, model_tier=ModelTier(lm.card.tier), classes=lm.card.classes,
+                               probabilities=[], top_range=None, top_probability=None, expected_age_years=None, plausible_ranges=[], entropy_bits=None,
+                               decision=Decision.abstained, decision_reason=reason, latency_ms=0.0, disclaimer=AGE_DISCLAIMER)
+        with rec.stage(PipelineStage.age_estimation, f"float32[1,3,{lm.card.input_size},{lm.card.input_size}]", "age-range probabilities",
+                       model_id=lm.card.model_id, model_version=lm.card.version):
+            t0 = perf_ms()
+            chw = preprocess(decoded["face"], lm.preprocess_cfg)
+            pr = lm.predict_proba(chw[None].astype(np.float32))[0]
+            ms = perf_ms() - t0
+        return summarize_age(lm, pr, q, ms, chw, decoded["face"], opts.return_inputs)
 
     def _abstain(self, lm, region: str, threshold: float, quality: ImageQuality) -> Prediction:
         return Prediction(

@@ -56,6 +56,7 @@ class TrainConfig:
     version: str | None = None
     group_by: str = "subject_id"  # or "session_id" when there are too few people (forces tier experimental)
     class_weighted: bool = False  # weight the loss by inverse class frequency (useful for imbalanced real data)
+    split_column: str | None = None  # manifest column marking an official test split ("test")
 
 
 # Validation gate: a model may only be marked "validated" if its held-out test split is big and diverse enough
@@ -85,6 +86,14 @@ def check_validation_gate(cfg: TrainConfig, splits: dict, classes: list[str], da
 
 
 def _limitations(cfg: TrainConfig, n_subjects: int) -> list[str]:
+    if cfg.model_id == "apparent_age":
+        return [
+            "EXPERIMENTAL: trained on FairFace (CC BY 4.0) face photos from Flickr; labels are crowd-annotated APPARENT-age bins, not verified ages.",
+            "Domain shift: FairFace photos differ from webcam frames (lighting, resolution, pose) — expect lower accuracy live.",
+            "The 'under_20' range merges 0–19, so the model cannot tell minors from young adults; only a user-confirmed range may be used for age-appropriateness.",
+            "FairFace has no identity ids, so near-duplicate faces across splits cannot be ruled out; test metrics may be optimistic.",
+            "Performance differs across gender and race groups — see the subgroup table. Never use for identity verification, age-gating or health statements.",
+        ]
     if cfg.tier == "demo":
         return ["Trained ONLY on procedurally generated synthetic images; predictions on real faces are meaningless.",
                 "Synthetic skin-tone groups do not establish fairness on real people."]
@@ -137,7 +146,7 @@ def run(cfg: TrainConfig) -> Path:
         raise ValueError(f"only {n_subjects} subject(s): a subject-grouped split is impossible. Collect images from more people, "
                          "or pass --group-by session_id (the model will then be tier 'experimental' and its test score will "
                          "OVERESTIMATE performance on new people).")
-    splits = grouped_split(samples, cfg.val_frac, cfg.test_frac, cfg.split_seed, cfg.group_by)
+    splits = grouped_split(samples, cfg.val_frac, cfg.test_frac, cfg.split_seed, cfg.group_by, cfg.split_column)
     assert_no_leakage(splits, cfg.group_by)
     for k, v in splits.items():
         if not v:
@@ -223,13 +232,13 @@ def run(cfg: TrainConfig) -> Path:
     threshold = cfg.threshold if cfg.threshold is not None else entry.default_threshold
 
     card = ModelCard(
-        model_id=cfg.model_id, version=version, tier=cfg.tier, feature=entry.feature, regions=list(entry.regions), classes=classes,
+        model_id=cfg.model_id, version=version, tier=cfg.tier, feature=entry.feature, task=entry.task, regions=list(entry.regions), classes=classes,
         positive_class=classes[0], backbone=cfg.backbone, input_size=cfg.input_size,
         normalization={"mean": list(IMAGENET_MEAN), "std": list(IMAGENET_STD)}, default_threshold=threshold, temperature=temperature,
         created_at=time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
         training_summary={
             "best_epoch": best_epoch, "epochs_run": len(history), "best_val_loss": best_loss, "train_seconds": round(time.time() - t_start, 1),
-            "split_seed": cfg.split_seed, "seed": cfg.seed, "pretrained_imagenet": cfg.pretrained and cfg.backbone != "small_cnn", "device": device,
+            "split_seed": cfg.split_seed, "split_column": cfg.split_column, "seed": cfg.seed, "pretrained_imagenet": cfg.pretrained and cfg.backbone != "small_cnn", "device": device,
             "n_train": len(train_ds), "n_val": len(val_ds), "n_test": len(splits["test"]), "tracker": tracker.backend, "run_id": tracker.run_id,
             "torch": torch.__version__, "python": platform.python_version(), "history": history,
         },
@@ -244,14 +253,14 @@ def run(cfg: TrainConfig) -> Path:
     (out / "model_card.json").write_text(card.model_dump_json(indent=2))
 
     lm = LoadedModel(card=card, path=out, runtime="torch", device=device, torch_model=model.eval())
-    report = evaluate_samples(lm, splits["test"])
+    report = evaluate_samples(lm, splits["test"], perturb=entry.task != "age_range" or len(splits["test"]) <= 5000)
     (out / "eval_report.json").write_text(json.dumps(report, indent=2))
     (out / "eval_report.md").write_text(to_markdown(report, f"{cfg.model_id}@{version} — held-out test split ({cfg.tier})"))
     o = report["overall"]
     card.metrics = {
         "split": "test", "n": o["n"], "accuracy": o["accuracy"], "macro_f1": o["macro_f1"], "ece": o["calibration"]["ece"],
         "per_class": {c: {k: round(v, 4) for k, v in m.items()} for c, m in o["per_class"].items()},
-        "selective": o["selective"], "latency": report.get("latency"),
+        "selective": o["selective"], "latency": report.get("latency"), "age": (report.get("age") or {}).get("overall"),
         "data_caveat": "synthetic test data — says nothing about real-world performance" if cfg.tier == "demo"
         else ("test split grouped by session, not person — optimistic" if cfg.group_by != "subject_id" else ""),
     }

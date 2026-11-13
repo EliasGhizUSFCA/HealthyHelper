@@ -1,4 +1,4 @@
-.PHONY: setup backend frontend test test-backend test-frontend lint demo-models train-real evaluate onnx schemas docker
+.PHONY: setup backend frontend test test-backend test-frontend lint demo-models train-real evaluate onnx schemas docker catalog age-data age-model eval-recs eval-llm
 PY ?= python3
 
 setup:
@@ -28,6 +28,24 @@ train-real:
 	cd backend && $(PY) -m training.export_dataset --model-id $(MODEL)
 	cd backend && $(PY) -m training.train --model-id $(MODEL) --manifest ../data/runtime/dataset/manifests/$(MODEL).csv \
 	  --backbone $(BACKBONE) --pretrained --tier $(TIER) --group-by $(GROUP) --epochs $(EPOCHS) --class-weighted --patience 4
+
+## eCosmetics catalogue: polite, robots-checked, targeted refresh into the local DB (~12 min)
+catalog:
+	cd backend && $(PY) -m app.recommendations.catalog.refresh --per-category 25
+
+## Apparent-age model on FairFace (CC BY 4.0): download, prepare, train (experimental tier)
+age-data:
+	scripts/fetch_fairface.sh
+	cd backend && $(PY) -m training.datasets.fairface --src ../data/external/fairface --out ../data/age/fairface
+age-model:
+	cd backend && $(PY) -m training.train --model-id apparent_age --manifest ../data/age/fairface/manifest.csv --backbone resnet18 \
+	  --pretrained --tier experimental --input-size 112 --epochs 6 --batch-size 64 --split-column ff_split --patience 2 --lr 0.0005
+
+## Recommendation + LLM evaluation reports (written to docs/evaluation/)
+eval-recs:
+	cd backend && $(PY) -m evaluation.recommendations_eval --out ../docs/evaluation/recommendations.md
+eval-llm:
+	cd backend && $(PY) -m evaluation.llm_eval --out ../docs/evaluation/llm.md
 
 ## Re-run evaluation for the newest version of each model on its synthetic test split
 evaluate:

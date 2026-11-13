@@ -180,7 +180,7 @@ async def create_snapshot(body: SnapshotCreate, request: Request) -> SnapshotSum
 
     def work() -> dict:
         aligned, _, aligned_lm = align_face(image, lm)
-        crops = crop_regions(aligned, aligned_lm)
+        crops = {k: v for k, v in crop_regions(aligned, aligned_lm).items() if k != "face"}  # snapshots never keep a whole-face crop
         region_imgs = {n: cv2.resize(c, (SNAPSHOT_REGION_SIZE, SNAPSHOT_REGION_SIZE), interpolation=cv2.INTER_AREA) for n, (c, _) in crops.items()}
         quality = _frame_quality(image, lm)
         frame = ClientFrame(frame_id=0, captured_at=now_ms(), quality=quality,

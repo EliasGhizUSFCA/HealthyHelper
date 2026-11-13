@@ -12,6 +12,10 @@ def make_provider(settings: Settings):
     from app.llm.providers.offline_provider import OfflineTemplateProvider
 
     choice = settings.llm_provider
+    if choice == "ollama":
+        from app.llm.providers.ollama_provider import OllamaProvider
+
+        return OllamaProvider(os.getenv("OLLAMA_MODEL", "llama3.1"), os.getenv("OLLAMA_URL", "http://localhost:11434"))
     has_creds = bool(os.getenv("ANTHROPIC_API_KEY") or os.getenv("ANTHROPIC_AUTH_TOKEN"))
     if choice == "anthropic" or (choice == "auto" and has_creds):
         try:

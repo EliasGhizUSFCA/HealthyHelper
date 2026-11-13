@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Protocol
+from typing import Any, Protocol
+
+from pydantic import BaseModel
 
 from app.schemas.protocol import AssistantReply
 
@@ -14,11 +16,12 @@ class LLMRequest:
     messages: list[dict]  # [{"role": "user"|"assistant", "content": str}]
     context: dict  # structured context (evidence, retrieval, symptoms) — used by offline provider
     max_tokens: int = 2048
+    output_model: type[BaseModel] = AssistantReply
 
 
 @dataclass
 class LLMResult:
-    reply: AssistantReply
+    reply: Any  # instance of LLMRequest.output_model
     model: str
     usage: dict[str, int] = field(default_factory=dict)
     stop_reason: str | None = None
