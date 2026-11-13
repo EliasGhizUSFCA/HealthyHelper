@@ -66,6 +66,10 @@ def evaluate_samples(lm, samples, threshold: float | None = None, slice_keys: li
     y = np.array([classes.index(s.label) for s in samples])
     probs = predict(lm, images)
     report: dict = {"overall": summarize(probs, y, classes, thr)}
+    if getattr(lm.card, "task", "binary_feature") == "age_range":
+        from evaluation.age_metrics import age_report
+
+        report["age"] = age_report(probs, y, classes, {k: [str(s.meta.get(k, "unknown")) for s in samples] for k in ("gender", "race") if samples and k in samples[0].meta})
     keys = slice_keys if slice_keys is not None else sorted({k for s in samples for k in s.meta if k not in {"severity", "source", "session_id", "n_annotators"}})
     slices: dict[str, dict] = {}
     for k in keys:
@@ -106,6 +110,19 @@ def to_markdown(report: dict, title: str) -> str:
         lines += ["## Robustness (controlled perturbations)", "", "| perturbation | accuracy | macro-F1 | ECE | coverage |", "|---|---|---|---|---|"]
         lines += [f"| {k} | {v['accuracy']:.3f} | {v['macro_f1']:.3f} | {v['ece']:.3f} | {v['coverage']:.3f} |" for k, v in report["perturbations"].items()]
         lines.append("")
+    if "age" in report:
+        ag = report["age"]["overall"]
+        lines += ["## Apparent-age metrics", "", f"range accuracy {ag['range_accuracy']:.3f}, within ±1 range {ag['within_one_range']:.3f}, "
+                  f"MAE (expected vs range midpoint) {ag['mae_years_expected_vs_midpoint']:.1f} y, 80% span coverage {ag['plausible_span_coverage']:.3f} "
+                  f"(mean width {ag['mean_span_width_ranges']:.2f} ranges), mean entropy {ag['mean_entropy_bits']:.2f} bits", "", report["age"]["caveat"], ""]
+        for key, groups in report["age"].get("subgroups", {}).items():
+            if key.endswith("_gap"):
+                lines.append(f"Largest subgroup gap ({key[:-4]}): accuracy {groups['range_accuracy_max_minus_min']:.3f}, MAE {groups['mae_max_minus_min']:.1f} y")
+                lines.append("")
+                continue
+            lines += [f"### Subgroup: {key}", "", "| group | n | range acc | ±1 acc | MAE (y) |", "|---|---|---|---|---|"]
+            lines += [f"| {g} | {v['n']} | {v['range_accuracy']:.3f} | {v['within_one_range']:.3f} | {v['mae_years_expected_vs_midpoint']:.1f} |" for g, v in groups.items()]
+            lines.append("")
     if "latency" in report:
         lat = report["latency"]
         lines.append(f"Latency (batch 1, {lat['device']}, {lat['runtime']}): p50 = {lat['p50_ms']:.2f} ms, p95 = {lat['p95_ms']:.2f} ms")
@@ -128,7 +145,8 @@ def main() -> None:
     seed = a.seed if a.seed is not None else int(lm.card.training_summary.get("split_seed", 42))
     samples = read_manifest(a.manifest)
     if a.split != "all":
-        samples = grouped_split(samples, seed=seed, group_by=lm.card.dataset.get("group_by", "subject_id"))[a.split]
+        samples = grouped_split(samples, seed=seed, group_by=lm.card.dataset.get("group_by", "subject_id"),
+                                split_column=lm.card.training_summary.get("split_column"))[a.split]
     rep = evaluate_samples(lm, samples)
     out = a.out or a.model_dir / f"eval_{a.split}.json"
     out.write_text(json.dumps(rep, indent=2))

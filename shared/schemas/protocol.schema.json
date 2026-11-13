@@ -1,5 +1,133 @@
 {
   "$defs": {
+    "AgeEstimate": {
+      "additionalProperties": false,
+      "description": "Apparent-age range estimate. Never stored, never sent to the LLM, never used for recommendations\n(only a range the USER confirms may be used, and only for age-appropriateness filtering).",
+      "properties": {
+        "classes": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Classes",
+          "type": "array"
+        },
+        "decision": {
+          "$ref": "#/$defs/Decision"
+        },
+        "decision_reason": {
+          "title": "Decision Reason",
+          "type": "string"
+        },
+        "disclaimer": {
+          "title": "Disclaimer",
+          "type": "string"
+        },
+        "entropy_bits": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Entropy Bits"
+        },
+        "expected_age_years": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Probability-weighted mean of range midpoints (approximate)",
+          "title": "Expected Age Years"
+        },
+        "input": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ModelInput"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "latency_ms": {
+          "title": "Latency Ms",
+          "type": "number"
+        },
+        "model_id": {
+          "title": "Model Id",
+          "type": "string"
+        },
+        "model_tier": {
+          "$ref": "#/$defs/ModelTier"
+        },
+        "model_version": {
+          "title": "Model Version",
+          "type": "string"
+        },
+        "plausible_ranges": {
+          "description": "Smallest run of adjacent ranges holding >= 80% probability",
+          "items": {
+            "type": "string"
+          },
+          "title": "Plausible Ranges",
+          "type": "array"
+        },
+        "probabilities": {
+          "items": {
+            "type": "number"
+          },
+          "title": "Probabilities",
+          "type": "array"
+        },
+        "top_probability": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Top Probability"
+        },
+        "top_range": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Top Range"
+        }
+      },
+      "required": [
+        "model_id",
+        "model_version",
+        "model_tier",
+        "classes",
+        "probabilities",
+        "top_range",
+        "top_probability",
+        "expected_age_years",
+        "plausible_ranges",
+        "entropy_bits",
+        "decision",
+        "decision_reason",
+        "latency_ms",
+        "disclaimer"
+      ],
+      "title": "AgeEstimate",
+      "type": "object"
+    },
     "AgentTrace": {
       "additionalProperties": false,
       "properties": {
@@ -139,6 +267,352 @@
       "title": "AssistantReply",
       "type": "object"
     },
+    "CatalogProduct": {
+      "additionalProperties": false,
+      "properties": {
+        "alt_urls": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Alt Urls",
+          "type": "array"
+        },
+        "attributes": {
+          "$ref": "#/$defs/ProductAttributes"
+        },
+        "availability": {
+          "default": "unknown",
+          "enum": [
+            "in_stock",
+            "out_of_stock",
+            "unknown"
+          ],
+          "title": "Availability",
+          "type": "string"
+        },
+        "brand": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Brand"
+        },
+        "categories": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Categories",
+          "type": "array"
+        },
+        "claims": {
+          "items": {
+            "$ref": "#/$defs/Claim"
+          },
+          "title": "Claims",
+          "type": "array"
+        },
+        "completeness": {
+          "description": "share of tracked fields present (0..1)",
+          "title": "Completeness",
+          "type": "number"
+        },
+        "currency": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Currency"
+        },
+        "description": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Description"
+        },
+        "first_seen": {
+          "title": "First Seen",
+          "type": "number"
+        },
+        "image_url": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Image Url"
+        },
+        "ingredients": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Ingredients"
+        },
+        "ingredients_list": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Ingredients List",
+          "type": "array"
+        },
+        "last_verified": {
+          "title": "Last Verified",
+          "type": "number"
+        },
+        "list_price": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "List Price"
+        },
+        "mode": {
+          "enum": [
+            "skincare",
+            "makeup",
+            "mixed"
+          ],
+          "title": "Mode",
+          "type": "string"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "parse_warnings": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Parse Warnings",
+          "type": "array"
+        },
+        "price": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Price"
+        },
+        "price_status": {
+          "enum": [
+            "listed",
+            "unavailable_variable_product",
+            "missing",
+            "invalid_zero"
+          ],
+          "title": "Price Status",
+          "type": "string"
+        },
+        "product_id": {
+          "title": "Product Id",
+          "type": "string"
+        },
+        "retailer_categories": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Retailer Categories",
+          "type": "array"
+        },
+        "shades": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Shades",
+          "type": "array"
+        },
+        "sitemap_lastmod": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Sitemap Lastmod"
+        },
+        "size": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Size"
+        },
+        "sku": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Sku"
+        },
+        "source": {
+          "const": "ecosmetics",
+          "default": "ecosmetics",
+          "title": "Source",
+          "type": "string"
+        },
+        "stale": {
+          "default": false,
+          "title": "Stale",
+          "type": "boolean"
+        },
+        "upc": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Upc"
+        },
+        "url": {
+          "title": "Url",
+          "type": "string"
+        },
+        "usage": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Usage"
+        }
+      },
+      "required": [
+        "product_id",
+        "url",
+        "name",
+        "categories",
+        "retailer_categories",
+        "mode",
+        "price_status",
+        "first_seen",
+        "last_verified",
+        "completeness"
+      ],
+      "title": "CatalogProduct",
+      "type": "object"
+    },
+    "CatalogStatus": {
+      "additionalProperties": false,
+      "properties": {
+        "by_category": {
+          "additionalProperties": {
+            "type": "integer"
+          },
+          "title": "By Category",
+          "type": "object"
+        },
+        "crawl_enabled": {
+          "title": "Crawl Enabled",
+          "type": "boolean"
+        },
+        "last_refresh": {
+          "anyOf": [
+            {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Last Refresh"
+        },
+        "policy": {
+          "additionalProperties": true,
+          "title": "Policy",
+          "type": "object"
+        },
+        "products": {
+          "title": "Products",
+          "type": "integer"
+        },
+        "refresh_running": {
+          "title": "Refresh Running",
+          "type": "boolean"
+        },
+        "source": {
+          "default": "local catalogue (PostgreSQL/SQLite) populated from permitted eCosmetics product pages",
+          "title": "Source",
+          "type": "string"
+        },
+        "stale_after_hours": {
+          "title": "Stale After Hours",
+          "type": "number"
+        },
+        "stale_products": {
+          "title": "Stale Products",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "crawl_enabled",
+        "policy",
+        "products",
+        "by_category",
+        "stale_products",
+        "stale_after_hours",
+        "last_refresh",
+        "refresh_running"
+      ],
+      "title": "CatalogStatus",
+      "type": "object"
+    },
     "ChatMessage": {
       "additionalProperties": false,
       "properties": {
@@ -187,6 +661,15 @@
           "default": null,
           "description": "Fallback if the server holds no observations for this session (e.g. REST-only clients)."
         },
+        "product_ids": {
+          "description": "Catalogue products the user selected to discuss",
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 6,
+          "title": "Product Ids",
+          "type": "array"
+        },
         "session_id": {
           "title": "Session Id",
           "type": "string"
@@ -230,6 +713,39 @@
         "events"
       ],
       "title": "ChatResponse",
+      "type": "object"
+    },
+    "Claim": {
+      "additionalProperties": false,
+      "properties": {
+        "attribute": {
+          "description": "normalised attribute the claim supports, e.g. 'fragrance_free', 'for_dry_skin'",
+          "title": "Attribute",
+          "type": "string"
+        },
+        "source_field": {
+          "enum": [
+            "name",
+            "description",
+            "usage",
+            "ingredients",
+            "category"
+          ],
+          "title": "Source Field",
+          "type": "string"
+        },
+        "text": {
+          "description": "verbatim snippet (\u2264 160 chars) from the retailer page",
+          "title": "Text",
+          "type": "string"
+        }
+      },
+      "required": [
+        "attribute",
+        "text",
+        "source_field"
+      ],
+      "title": "Claim",
       "type": "object"
     },
     "ClientExplain": {
@@ -702,6 +1218,53 @@
       "title": "Explanation",
       "type": "object"
     },
+    "ExplanationSet": {
+      "additionalProperties": false,
+      "description": "Schema the LLM must return for product explanations.",
+      "properties": {
+        "products": {
+          "items": {
+            "$ref": "#/$defs/ProductExplanation"
+          },
+          "title": "Products",
+          "type": "array"
+        },
+        "summary": {
+          "title": "Summary",
+          "type": "string"
+        }
+      },
+      "required": [
+        "summary",
+        "products"
+      ],
+      "title": "ExplanationSet",
+      "type": "object"
+    },
+    "FilteredOut": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "product_id": {
+          "title": "Product Id",
+          "type": "string"
+        },
+        "reason": {
+          "title": "Reason",
+          "type": "string"
+        }
+      },
+      "required": [
+        "product_id",
+        "name",
+        "reason"
+      ],
+      "title": "FilteredOut",
+      "type": "object"
+    },
     "FrameDropped": {
       "additionalProperties": false,
       "properties": {
@@ -736,6 +1299,12 @@
     "FrameOptions": {
       "additionalProperties": false,
       "properties": {
+        "enable_age": {
+          "default": false,
+          "description": "User opted in to apparent-age estimation for this frame (default off)",
+          "title": "Enable Age",
+          "type": "boolean"
+        },
         "enabled_models": {
           "anyOf": [
             {
@@ -842,6 +1411,17 @@
     "InferenceResult": {
       "additionalProperties": false,
       "properties": {
+        "age": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/AgeEstimate"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
         "captured_at": {
           "title": "Captured At",
           "type": "number"
@@ -1163,8 +1743,12 @@
         "landmark_extraction",
         "region_cropping",
         "preprocessing",
+        "age_estimation",
         "cv_inference",
         "structured_observations",
+        "user_preferences",
+        "product_retrieval",
+        "product_ranking",
         "llm_request",
         "response_validation",
         "ui_render"
@@ -1286,6 +1870,111 @@
       "title": "Prediction",
       "type": "object"
     },
+    "ProductAttributes": {
+      "additionalProperties": false,
+      "properties": {
+        "benefits": {
+          "description": "marketed benefits, e.g. hydrating, barrier, soothing",
+          "items": {
+            "type": "string"
+          },
+          "title": "Benefits",
+          "type": "array"
+        },
+        "contains_fragrance_ingredient": {
+          "default": "unknown",
+          "enum": [
+            "yes",
+            "no",
+            "unknown"
+          ],
+          "title": "Contains Fragrance Ingredient",
+          "type": "string"
+        },
+        "coverage": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Coverage",
+          "type": "array"
+        },
+        "finish": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Finish",
+          "type": "array"
+        },
+        "fragrance_free_claimed": {
+          "default": "unknown",
+          "enum": [
+            "yes",
+            "no",
+            "unknown"
+          ],
+          "title": "Fragrance Free Claimed",
+          "type": "string"
+        },
+        "non_comedogenic_claimed": {
+          "default": "unknown",
+          "enum": [
+            "yes",
+            "no",
+            "unknown"
+          ],
+          "title": "Non Comedogenic Claimed",
+          "type": "string"
+        },
+        "skin_types": {
+          "description": "skin types the product is MARKETED for",
+          "items": {
+            "type": "string"
+          },
+          "title": "Skin Types",
+          "type": "array"
+        },
+        "spf": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Spf"
+        },
+        "texture": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Texture",
+          "type": "array"
+        }
+      },
+      "title": "ProductAttributes",
+      "type": "object"
+    },
+    "ProductExplanation": {
+      "additionalProperties": false,
+      "properties": {
+        "explanation": {
+          "title": "Explanation",
+          "type": "string"
+        },
+        "product_id": {
+          "title": "Product Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "product_id",
+        "explanation"
+      ],
+      "title": "ProductExplanation",
+      "type": "object"
+    },
     "QualityMetrics": {
       "additionalProperties": false,
       "properties": {
@@ -1388,6 +2077,390 @@
       ],
       "title": "QualityStatus",
       "type": "string"
+    },
+    "RankedProduct": {
+      "additionalProperties": false,
+      "properties": {
+        "components": {
+          "items": {
+            "$ref": "#/$defs/ScoreComponent"
+          },
+          "title": "Components",
+          "type": "array"
+        },
+        "matched_claims": {
+          "items": {
+            "$ref": "#/$defs/Claim"
+          },
+          "title": "Matched Claims",
+          "type": "array"
+        },
+        "product": {
+          "$ref": "#/$defs/CatalogProduct"
+        },
+        "rank": {
+          "title": "Rank",
+          "type": "integer"
+        },
+        "total_score": {
+          "title": "Total Score",
+          "type": "number"
+        },
+        "warnings": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Warnings",
+          "type": "array"
+        }
+      },
+      "required": [
+        "rank",
+        "product",
+        "total_score",
+        "components",
+        "matched_claims",
+        "warnings"
+      ],
+      "title": "RankedProduct",
+      "type": "object"
+    },
+    "RecommendationRequest": {
+      "additionalProperties": false,
+      "properties": {
+        "brands": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Brands",
+          "type": "array"
+        },
+        "budget_max": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Budget Max"
+        },
+        "categories": {
+          "description": "restrict to these categories (empty = default for concern)",
+          "items": {
+            "type": "string"
+          },
+          "title": "Categories",
+          "type": "array"
+        },
+        "concern": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "user-selected concern, e.g. dry_lips, surface_dryness, sensitive_skin, blemish_prone, visible_redness",
+          "title": "Concern"
+        },
+        "confirmed_age_range": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "ONLY a range the user confirmed; camera estimates are never accepted here",
+          "title": "Confirmed Age Range"
+        },
+        "coverage": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Coverage"
+        },
+        "exclude_ingredients": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 20,
+          "title": "Exclude Ingredients",
+          "type": "array"
+        },
+        "explain": {
+          "default": true,
+          "title": "Explain",
+          "type": "boolean"
+        },
+        "finish": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Finish"
+        },
+        "fragrance_free": {
+          "default": false,
+          "title": "Fragrance Free",
+          "type": "boolean"
+        },
+        "in_stock_only": {
+          "default": false,
+          "title": "In Stock Only",
+          "type": "boolean"
+        },
+        "include_observations": {
+          "description": "'region:feature' keys the USER chose to include",
+          "items": {
+            "type": "string"
+          },
+          "title": "Include Observations",
+          "type": "array"
+        },
+        "limit": {
+          "default": 8,
+          "maximum": 30,
+          "minimum": 1,
+          "title": "Limit",
+          "type": "integer"
+        },
+        "mode": {
+          "enum": [
+            "skincare",
+            "makeup"
+          ],
+          "title": "Mode",
+          "type": "string"
+        },
+        "query": {
+          "default": "",
+          "description": "free-text preference, e.g. 'lightweight gel'",
+          "maxLength": 200,
+          "title": "Query",
+          "type": "string"
+        },
+        "session_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Session Id"
+        },
+        "shade": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Shade"
+        },
+        "strict_ingredient_check": {
+          "default": false,
+          "description": "Exclude products whose ingredient list is unavailable when exclusions or fragrance-free are requested",
+          "title": "Strict Ingredient Check",
+          "type": "boolean"
+        },
+        "undertone": {
+          "anyOf": [
+            {
+              "enum": [
+                "cool",
+                "neutral",
+                "warm",
+                "olive"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Undertone"
+        }
+      },
+      "required": [
+        "mode"
+      ],
+      "title": "RecommendationRequest",
+      "type": "object"
+    },
+    "RecommendationResponse": {
+      "additionalProperties": false,
+      "properties": {
+        "disclaimer": {
+          "title": "Disclaimer",
+          "type": "string"
+        },
+        "events": {
+          "items": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "title": "Events",
+          "type": "array"
+        },
+        "explanations": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ExplanationSet"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "request": {
+          "$ref": "#/$defs/RecommendationRequest"
+        },
+        "results": {
+          "items": {
+            "$ref": "#/$defs/RankedProduct"
+          },
+          "title": "Results",
+          "type": "array"
+        },
+        "trace": {
+          "$ref": "#/$defs/RecommendationTrace"
+        }
+      },
+      "required": [
+        "request",
+        "results",
+        "explanations",
+        "trace",
+        "events",
+        "disclaimer"
+      ],
+      "title": "RecommendationResponse",
+      "type": "object"
+    },
+    "RecommendationTrace": {
+      "additionalProperties": false,
+      "properties": {
+        "after_filters": {
+          "title": "After Filters",
+          "type": "integer"
+        },
+        "age_note": {
+          "title": "Age Note",
+          "type": "string"
+        },
+        "age_used": {
+          "title": "Age Used",
+          "type": "boolean"
+        },
+        "candidates": {
+          "title": "Candidates",
+          "type": "integer"
+        },
+        "categories_searched": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Categories Searched",
+          "type": "array"
+        },
+        "filtered_out": {
+          "items": {
+            "$ref": "#/$defs/FilteredOut"
+          },
+          "title": "Filtered Out",
+          "type": "array"
+        },
+        "live_requests": {
+          "default": 0,
+          "title": "Live Requests",
+          "type": "integer"
+        },
+        "llm": {
+          "additionalProperties": true,
+          "title": "Llm",
+          "type": "object"
+        },
+        "retrieval_source": {
+          "const": "local_catalogue",
+          "default": "local_catalogue",
+          "title": "Retrieval Source",
+          "type": "string"
+        },
+        "search_terms": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Search Terms",
+          "type": "array"
+        },
+        "stale_in_results": {
+          "title": "Stale In Results",
+          "type": "integer"
+        },
+        "timings_ms": {
+          "additionalProperties": {
+            "type": "number"
+          },
+          "title": "Timings Ms",
+          "type": "object"
+        },
+        "validation": {
+          "items": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "title": "Validation",
+          "type": "array"
+        },
+        "weights": {
+          "additionalProperties": {
+            "type": "number"
+          },
+          "title": "Weights",
+          "type": "object"
+        }
+      },
+      "required": [
+        "categories_searched",
+        "search_terms",
+        "candidates",
+        "after_filters",
+        "filtered_out",
+        "weights",
+        "age_used",
+        "age_note",
+        "stale_in_results",
+        "timings_ms"
+      ],
+      "title": "RecommendationTrace",
+      "type": "object"
     },
     "RegionComparison": {
       "additionalProperties": false,
@@ -1495,7 +2568,8 @@
         "skin_right_cheek",
         "skin_chin",
         "left_undereye",
-        "right_undereye"
+        "right_undereye",
+        "face"
       ],
       "title": "RegionName",
       "type": "string"
@@ -1527,6 +2601,49 @@
         "review_status"
       ],
       "title": "RetrievedDoc",
+      "type": "object"
+    },
+    "ScoreComponent": {
+      "additionalProperties": false,
+      "properties": {
+        "contribution": {
+          "description": "weight * score / sum(weights of known components)",
+          "title": "Contribution",
+          "type": "number"
+        },
+        "detail": {
+          "title": "Detail",
+          "type": "string"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "score": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "0..1, or null when information is missing (excluded from the total, not counted against)",
+          "title": "Score"
+        },
+        "weight": {
+          "title": "Weight",
+          "type": "number"
+        }
+      },
+      "required": [
+        "name",
+        "weight",
+        "score",
+        "contribution",
+        "detail"
+      ],
+      "title": "ScoreComponent",
       "type": "object"
     },
     "ServerError": {
@@ -1914,6 +3031,32 @@
           "title": "Duration Ms",
           "type": "number"
         },
+        "error": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Error detail when status == 'error'",
+          "title": "Error"
+        },
+        "event_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Unique id (uuid4 hex) assigned by the emitter",
+          "title": "Event Id"
+        },
         "frame_id": {
           "description": "Monotonic per-session frame identifier. -1 for non-frame events (e.g. chat).",
           "title": "Frame Id",
@@ -1966,6 +3109,20 @@
           ],
           "title": "Origin",
           "type": "string"
+        },
+        "output": {
+          "anyOf": [
+            {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Small structured summary of the stage output",
+          "title": "Output"
         },
         "output_type": {
           "title": "Output Type",

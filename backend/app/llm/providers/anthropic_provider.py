@@ -7,7 +7,6 @@ source); it never reaches the browser.
 from __future__ import annotations
 
 from app.llm.providers.base import LLMError, LLMRefusal, LLMRequest, LLMResult
-from app.schemas.protocol import AssistantReply
 
 
 class AnthropicProvider:
@@ -29,7 +28,7 @@ class AnthropicProvider:
                 max_tokens=req.max_tokens,
                 system=[{"type": "text", "text": req.system, "cache_control": {"type": "ephemeral"}}],
                 messages=req.messages,
-                output_format=AssistantReply,
+                output_format=req.output_model,
                 output_config={"effort": self.effort},
                 # Server-side refusal fallback: on a policy decline the API re-runs on a fallback model.
                 betas=["server-side-fallback-2026-07-01"],

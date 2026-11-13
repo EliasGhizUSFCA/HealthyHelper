@@ -22,6 +22,17 @@ def test_typescript_mirror_matches_pydantic():
         assert ts == list(model.model_fields), f"{name}: TS {ts} != PY {list(model.model_fields)}"
 
 
+def test_catalog_typescript_mirror_matches_pydantic():
+    from app.schemas import catalog
+
+    src = (ROOT / "frontend" / "lib" / "catalog.ts").read_text()
+    block = src[src.index("export const CATALOG_FIELDS"):]
+    fields = {m.group(1): re.findall(r'"([a-z_0-9]+)"', m.group(2)) for m in re.finditer(r"(\w+): \[([^\]]*)\]", block)}
+    assert fields
+    for name, ts in fields.items():
+        assert ts == list(getattr(catalog, name).model_fields), name
+
+
 def test_ts_pipeline_order_matches():
     src = (ROOT / "frontend" / "lib" / "protocol.ts").read_text()
     block = src[src.index("PIPELINE_ORDER = [") : src.index("] as const")]

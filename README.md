@@ -1,207 +1,218 @@
 # AI Health Mirror
 
-An observable, extensible computer-vision + LLM system that looks at a webcam image and gives
-**wellness-education feedback about visible facial features** — lip dryness, eye-white redness, redness
-around the nose, skin flaking, acne-like spots/blemishes, irritated-looking (red) skin, skin shine and
-darker-looking skin under the eyes — while being explicit about uncertainty.
+A multimodal AI system that looks at a webcam image, describes **visible** facial features with explicit
+uncertainty, optionally estimates a broad **apparent-age** range, answers questions through a grounded LLM
+assistant, and recommends **real skincare and makeup products from the eCosmetics catalogue** through an
+inspectable ranking pipeline. A developer **Model Lab** shows every stage live: model inputs, probabilities,
+Grad-CAM, telemetry, catalogue crawling, ranking contributions and the exact context given to the LLM.
 
-> **Not a medical device.** It describes visible appearance in an image, never conditions. A camera cannot
-> establish dehydration, infection, acne or any other condition — it can only say "spots are visible".
-> `make demo-models` produces **DEMO-tier models trained only on synthetic images**; to get models trained on
-> real faces, collect and label your own consented data in the app (`/collect`, `/label`) and run
-> `make train-real` — those models are marked **experimental** until they pass a validation gate.
+> **Wellness education and cosmetic product discovery — not a medical device.** It describes appearance
+> ("lips appear dry in this image"), never conditions. A camera cannot establish dehydration, infection, acne,
+> illness or any internal condition, and apparent age is never used for health statements.
 
-Two interfaces:
+![Model Lab on the labelled synthetic-input source](docs/images/model-lab.png)
 
-* **Health Mirror** (`/mirror`) — approachable, accessible UI: consented camera, positioning guidance,
-  observation cards with plain-language uncertainty, symptom entry, grounded chat assistant, optional
-  consented snapshots for side-by-side comparison (`/history`).
-* **Collect & Label** (`/collect`, `/label`) — consented real-data collection (separate research consent,
-  withdrawable) and a blind, keyboard-driven labelling tool with inter-annotator agreement and one-click
-  export to a training manifest.
-* **Model Lab** (`/lab`) — a dark, resizable six-panel developer dashboard driven entirely by live telemetry:
-  detection overlays, model-input inspector (raw crop vs. de-normalised tensor), live probabilities with
-  threshold control, Grad-CAM explainability, pipeline/performance monitor and LLM context + agent trace.
+## Implemented vs. experimental vs. planned
 
-![Model Lab running on the labelled synthetic-input source: raw crop vs. model tensor, live DEMO-model
-probabilities, Grad-CAM overlay, pipeline timeline and the structured observations sent to the LLM](docs/images/model-lab.png)
-
-*Model Lab driven by the labelled **synthetic test input** source (no face/webcam in the build sandbox). Every
-number on screen is a real measurement or a real model output; the models are DEMO tier.*
+| Status | Component |
+|---|---|
+| **Implemented & tested** | browser landmarking (MediaPipe) + quality gate + 11 regions; WebSocket inference with bounded latest-frame-wins queue; model registry (PyTorch / ONNX Runtime), calibrated abstention, temporal aggregation, Grad-CAM; training/evaluation framework with subject-grouped splits, MLflow, model cards and a validation gate; consented data collection + blind multi-annotator labelling; grounded LLM assistant (safety router, validators, Claude structured outputs, Ollama, offline template); eCosmetics connector (robots-enforced, targeted, logged); product catalogue (dedupe, price history, staleness, feed import); hybrid transparent recommender + grounded explanations; longitudinal comparison; privacy/deletion controls; Docker/CI |
+| **Experimental (real data, not validated)** | `apparent_age` — ResNet-18 trained on FairFace (CC BY 4.0), evaluated below |
+| **Demo (synthetic data only)** | the eight visual-feature classifiers (`make demo-models`) — real weights and real inference, but trained on procedurally generated images, so outputs on real faces are labelled as demonstrations everywhere |
+| **Needs data / not done** | feature classifiers trained on real faces (collect with `/collect`, label with `/label`); human relevance judgments for nDCG; live test of the hosted LLM (no key in the build environment); clinical review of safety texts |
 
 ## Quick start
 
 ```bash
-make setup          # CPU PyTorch, backend dev deps, frontend deps (+ MediaPipe WASM copy)
-make demo-models    # synthetic datasets + 8 DEMO models (optional; ~20 min on 4 CPU cores)
-make backend        # FastAPI on :8000
-make frontend       # Next.js on :3000
+make setup          # CPU PyTorch + backend deps + frontend deps & MediaPipe assets
+make demo-models    # optional: synthetic data + 8 DEMO feature models (~20 min CPU)
+make catalog        # optional: polite eCosmetics refresh into the local DB (~12 min; see docs/data-sources/ecosmetics.md)
+make age-data age-model   # optional: download FairFace (~315 MB) and train the apparent-age model (~25 min CPU)
+make backend        # FastAPI :8000
+make frontend       # Next.js :3000  →  /mirror  /beauty  /lab  /history  /collect  /label  /privacy
 make test           # backend pytest + frontend vitest + typecheck
 ```
 
-Real data: open `/collect`, give consent, capture under varied conditions (ideally several people), label on
-`/label` (ideally two annotators), then `make train-real MODEL=lip_dryness` (`GROUP=session_id` if fewer than
-three people). Details and caveats: [docs/datasets.md](docs/datasets.md#collecting-and-training-on-real-data-built-into-the-app).
-
-No GPU, LLM key or trained model is required to run: missing models report **unavailable** (no scores
-are shown), and without `ANTHROPIC_API_KEY` the assistant uses a clearly labelled deterministic template
-provider. Docker: `docker compose up --build` (backend + PostgreSQL). See [docs/deployment.md](docs/deployment.md).
+Everything degrades honestly: no models → "not loaded"; no catalogue → the Beauty page explains how to run a
+refresh; no `ANTHROPIC_API_KEY` → a clearly labelled deterministic template provider. Docker:
+`docker compose up --build` (backend + PostgreSQL). Deployment: [docs/deployment.md](docs/deployment.md).
 
 ## Architecture
 
 ```
-Browser (camera rate)                                Backend (inference rate)
-──────────────────────                               ─────────────────────────
-getUserMedia → MediaPipe Face Landmarker (WASM)
-  → client quality check → region crops ──(opt-in)──▶ /ws/inference  (latest-frame-wins, 1 slot)
-  → overlays / telemetry store                          → crop quality gate
-                                                        → shared preprocessing (= training code)
-     ◀── InferenceResult · FrameDropped · Metrics ──    → batched CNN inference (torch | ONNX)
-                                                        → accept / inconclusive / abstain
-                                                        → temporal aggregation → StructuredObservations
-     ── /api/chat ──────────────────────────────────▶   → safety triage → retrieval → Claude (structured)
-     ◀── reply + AgentTrace ────────────────────────    → validation (+retry) → grounded fallback
+Browser (camera rate)                         FastAPI backend (inference / request rate)        Offline jobs
+getUserMedia → MediaPipe Face Landmarker      /ws/inference (1-slot mailbox, drops stale)        catalogue refresh
+ → quality gate → region crops ──opt-in──▶     → crop quality gate → shared preprocessing         (robots · sitemap ·
+   (face crop only if age opted in)            → CNN classifiers (torch | ONNX) → abstain/accept    JSON-LD parser ·
+ → overlays, telemetry store, Frame Inspector  → temporal aggregation → StructuredObservations       crawl log)
+                                               → [opt-in] apparent-age range (display only)          training / eval
+ /api/chat ──────────────────────────────────▶ safety router → evidence → retrieval → LLM → validators   (MLflow)
+ /api/recommendations ───────────────────────▶ preferences → local catalogue → filters → weighted ranking
+                                               → grounded explanations → validators → trace + events
 ```
 
-Full diagram and design rationale: [docs/architecture.md](docs/architecture.md). Wire protocol:
-[docs/api.md](docs/api.md), `backend/app/schemas/protocol.py` ↔ `frontend/lib/protocol.ts`
-(contract-tested; JSON Schema in `shared/schemas/`).
+Diagrams and rationale: [docs/architecture.md](docs/architecture.md). Typed contracts:
+`backend/app/schemas/{protocol,catalog}.py` ↔ `frontend/lib/{protocol,catalog}.ts`, field lists contract-tested,
+JSON Schema exported to `shared/schemas/`. Every stage emits a `TelemetryEvent` (event id, session, frame,
+timestamps, stage, status, duration, model version, structured output, error).
 
-Frontend core: one `AnalysisEngine` (`frontend/lib/engine.ts`) owns the camera, MediaPipe (GPU delegate with
-CPU fallback), the WebSocket client and the telemetry store; Mirror and Lab are two views over it. Landmarks
-run in a `requestAnimationFrame` loop; an independent sampler (0.5–10 Hz) crops the current frame and sends it
-only when no frame is in flight. Server timestamps are aligned to the client clock with an offset estimated
-from ping/pong, so the execution timeline is coherent across machines.
+Module map (the brief's suggested layout → this repo): `face_landmarks` → `frontend/lib/{landmarker,regions}.ts`;
+`preprocessing` → `backend/app/inference/preprocess.py`; `feature_classifiers` / `inference` →
+`backend/app/inference/`; `age_estimation` → `backend/app/inference/age.py` + catalogue entry `apparent_age`;
+`explainability` → `backend/app/inference/gradcam.py`; `recommendations/{scraper,catalog,ranking}` →
+same paths under `backend/app/recommendations/`; `privacy` / `safety` → `backend/app/{safety,storage}`.
 
-### Key technical decisions
+## Computer vision
 
-| Decision | Why |
+* **Regions** from `shared/regions.json` (one definition for browser crops, server crops and alignment): lips,
+  both eyes, both under-eyes, nose, forehead, both cheeks, chin, and a whole-face crop used only for age.
+* **Quality gate** (browser + server): brightness, contrast, blur (Laplacian variance), face size, yaw/pitch,
+  face count, region size; unusable → abstain, poor → stricter threshold.
+* **Feature classifiers** (binary: visible feature vs. no clear feature; "inconclusive" is an abstention
+  outcome, not a class): lip dryness, eye redness, nasal redness, skin flaking, spots/blemishes, skin
+  redness, shine, under-eye darkness. Temperature-scaled; user-facing observations need agreement over
+  several frames.
+* **Training** (`backend/training/`): manifest loader, subject-grouped leakage-checked splits (or an official
+  test split), webcam-realistic augmentation, transfer learning (ResNet/EfficientNet/MobileNet), early stopping,
+  checkpoints, temperature scaling, MLflow tracking, ONNX export with parity check, model cards.
+* **Tiers**: `demo` (synthetic) · `experimental` (real data) · `validated` (passes a gate: ≥ 15 people / ≥ 100
+  images / ≥ 30 per class in the test split, person-grouped, annotator κ ≥ 0.6). Training refuses mismatches.
+
+### Apparent age (opt-in)
+
+Off by default; the face crop is sent only while the user has it on. The model returns a probability
+distribution over six ranges (under 20, 20–29, …, 60+ — set by FairFace's bins), an expected age, an 80 %
+plausible span, entropy and an accept/inconclusive decision. The user can confirm, correct, skip or disable it;
+estimates are never stored, never sent to the LLM, and never used for ranking — only a **confirmed** range is
+accepted by the recommender, and only to filter anti-aging/peel products for a confirmed under-18 range.
+
+Held-out FairFace test split (4,000 images; from `models/apparent_age/*/eval_report.md`):
+
+| metric | value |
 |---|---|
-| Landmarks in the browser | Camera-rate tracking with no round-trip; raw frames never leave the device by default. |
-| Only small region crops are uploaded, after explicit opt-in | Privacy and bandwidth; the full frame is only sent for an explicitly consented snapshot. |
-| Inference sampler decoupled from rendering, 1 frame in flight; server mailbox drops stale frames | Smooth camera, bounded latency/memory, no accumulating queue. Camera FPS, landmark FPS and inference FPS are measured and shown separately. |
-| Single `regions.json` for browser crops, server crops and alignment | Crops are identical wherever they are computed (tested). |
-| Training imports the serving `preprocess()` | Train/serve parity by construction (tested). |
-| Binary classes + calibrated abstention rather than a learned "inconclusive" class | Labels describe what annotators see; uncertainty is handled by temperature-scaled scores, thresholds and quality gates that are tunable without retraining. |
-| Median over the last N usable frames before anything is "observed" | Single frames are noisy; Model Lab still shows raw per-frame output. |
-| LLM receives only structured observations | It cannot invent visual findings; every claim is validated against accepted evidence. |
-| Deterministic safety router before the LLM | Urgent complaints get a predetermined, reviewable response instead of a speculative answer. |
+| exact range accuracy / within ±1 range | 0.578 / 0.931 |
+| MAE (expected age vs. range midpoint, approximate) | 5.8 years |
+| ECE (calibration) | 0.032 |
+| 80 % span contains true range | 0.882 (mean width 2.16 ranges) |
+| largest subgroup gap — race / gender (accuracy) | 0.063 / 0.021 |
+| robustness (blur, exposure, noise, JPEG q25) | accuracy 0.555–0.565 |
+| latency (CPU, batch 1) | p50 5.4 ms |
 
-## Computer-vision & ML pipeline
+FairFace photos are not webcam frames, labels are annotated *apparent* age, and there are no identity ids, so
+expect worse live performance. Full card: [docs/model-cards/apparent_age.md](docs/model-cards/apparent_age.md).
 
-`backend/training/` — `python -m training.train --model-id <id> --manifest <csv> --backbone resnet18 --pretrained`
+### Feature classifiers (demo tier)
 
-1. **Data**: manifest CSV (`path,label,subject_id,…metadata`). **Subject-grouped** train/val/test split with a
-   leakage assertion (several images per person never straddle splits).
-2. **Augmentation** (webcam-realistic): exposure/contrast, white balance, defocus/motion blur, sensor noise,
-   JPEG artefacts, rotation/scale jitter, flips; small hue shifts only (redness is colour-defined).
-3. **Model**: torchvision transfer learning — ResNet-18/34, EfficientNet-B0, MobileNetV3-S (+ tiny CNN for tests).
-4. **Training**: AdamW, cosine LR, label smoothing, early stopping on validation loss, best checkpoint.
-5. **Calibration**: temperature scaling on the validation split.
-6. **Evaluation** (`backend/evaluation/`): precision/recall/F1, confusion matrix, FPR/FNR, ECE/Brier/NLL with
-   reliability bins, selective accuracy vs. coverage at the serving threshold, per-slice metrics (any
-   metadata column, e.g. skin-tone group, lighting, blur, pose), controlled perturbations, latency p50/p95.
-7. **Artifacts**: `models/<id>/<version>/{weights.pt, model.onnx, model_card.json, eval_report.{json,md}}`;
-   tracked in MLflow (SQLite backend; JSON fallback). `make onnx` exports with a numerical parity check.
+Trained on procedurally generated images ([docs/datasets.md](docs/datasets.md) explains why no suitable public
+dataset exists). Synthetic test accuracy 0.90–0.955 per model ([docs/model-cards/](docs/model-cards/)) — this
+only shows the pipeline works. Real-data path: `/collect` (separate, withdrawable research consent) → `/label`
+(blind, κ-measured) → `make train-real MODEL=…` → tier `experimental`.
 
-### Model tiers
+## LLM architecture
 
-| tier | trained on | how it is shown |
-|---|---|---|
-| `demo` | synthetic images only (`make demo-models`) | "Demonstration model" banner; assistant must say so |
-| `experimental` | real consented crops from `/collect`, any size (`make train-real`) | "Experimental" badge; assistant must say it's not validated |
-| `validated` | real data that passes the gate: ≥ 15 people / ≥ 100 images / ≥ 30 per class in the test split, person-grouped split, annotator κ ≥ 0.6 | normal display — still not clinically validated |
+Provider-independent (`backend/app/llm/providers/`): Claude via the Anthropic SDK (`claude-opus-5-5`,
+structured outputs into Pydantic models, cached static system prompt, server-side refusal fallback), any
+open-weight model via **Ollama** (JSON-schema constrained), or a deterministic offline template provider.
 
-`training.train` refuses mismatches (e.g. `demo` on real data, `validated` without passing the gate) and
-records contributors, agreement and split grouping in the model card.
+Chat workflow: deterministic **safety router** (urgent symptoms → reviewed response, LLM bypassed) → evidence
+selection (accepted observations only) → sufficiency check → curated retrieval → optional selected **product
+records** → structured generation → **validators** (no diagnosis, no health score, references ⊆ evidence,
+per-clause visual grounding, demo/experimental disclosure, no appearance judgements, product prices match
+records, no efficacy claims) → one retry with feedback → grounded template fallback. The trace (steps, timings,
+redacted context, validation, tokens) is shown in Model Lab.
 
-### What is actually trained
+## Product data pipeline (eCosmetics)
 
-There is no suitable public dataset with webcam-quality labels for these features (see
-[docs/datasets.md](docs/datasets.md)). To exercise the whole pipeline honestly, `training/synthetic.py`
-procedurally generates cartoon-like region patches across six skin-tone groups with per-subject appearance,
-varied capture conditions and 3 % label noise. Eight ResNet-18 (ImageNet-pretrained) **DEMO** models were
-trained on it. Held-out *synthetic* test results (from the generated model cards in
-[docs/model-cards/](docs/model-cards/)):
+Access review, findings and limits: **[docs/data-sources/ecosmetics.md](docs/data-sources/ecosmetics.md)**. In
+short: robots.txt allows product pages and is enforced per request; the REST API (401) and ajax endpoints are
+never used; discovery uses the public sitemap; pages are fetched ≥ 2 s apart with an honest User-Agent, a circuit
+breaker on 403/429 and a kill switch; JSON-LD is parsed first. **No user data ever reaches the retailer.**
 
-| model | regions | test n | accuracy | macro-F1 | ECE |
-|---|---|---|---|---|---|
-| lip_dryness | lips | 200 | 0.945 | 0.945 | 0.029 |
-| eye_redness | left/right eye | 200 | 0.930 | 0.930 | 0.052 |
-| nasal_redness | nose | 200 | 0.955 | 0.955 | 0.029 |
-| skin_flaking | forehead, cheeks | 200 | 0.900 | 0.900 | 0.035 |
-| skin_blemishes | forehead, cheeks, chin | 200 | 0.930 | 0.930 | 0.029 |
-| skin_redness | forehead, cheeks, chin | 200 | 0.950 | 0.950 | 0.032 |
-| skin_shine | forehead, cheeks, chin | 200 | 0.920 | 0.920 | 0.039 |
-| undereye_darkness | under left/right eye | 200 | 0.950 | 0.950 | 0.045 |
+First refresh (measured): 271 products in 12 categories (moisturisers, cleansers, serums, lip care, sunscreens,
+blemish-prone care, concealers, colour correctors, foundations, skin tints, setting products, lip colour);
+price available for 86 % (multi-shade listings load prices from disallowed ajax endpoints, so they show
+"price not listed — see retailer", never $0), ingredient lists for only **38 %**. One HTTP 429 was received and
+logged. Listings older than 72 h are marked stale.
 
-These numbers only show that the networks separate the synthetic patterns; **they say nothing about
-real-world performance, fairness, or clinical value.** Weights are not committed (`make demo-models`
-regenerates them deterministically from seeds).
+## Recommendation algorithm
 
-## LLM assistant
+`backend/app/recommendations/ranking/engine.py` — deterministic and inspectable:
 
-`backend/app/llm/agent.py` is a code-orchestrated workflow, not an open-ended agent:
+1. The **user** picks a concern or makeup goal (observations only contribute if ticked).
+2. Candidates from the local catalogue by category.
+3. **Hard filters**, each logged with a reason: brand, budget, stock, ingredient exclusions, fragrance-free
+   (ingredient list or "scented" wording), optional strict ingredient verification, confirmed-under-18
+   appropriateness.
+4. **Components** in [0, 1]: category relevance, concern match (marketed claims), TF-IDF text relevance,
+   ingredient preference, budget fit, availability, finish, coverage, shade, data reliability. Unknown inputs →
+   `null`, excluded from the weighted mean (never treated as good or bad) and surfaced as warnings.
+5. Weighted mean with configurable weights (`RECOMMENDER_WEIGHTS`); ties broken by id.
+6. The LLM explains only the returned records; validators reject unknown products, wrong prices,
+   efficacy/medical or appearance claims, and age mentions when age wasn't used.
 
-1. **Safety triage** (regex router, negation-aware) → urgent route returns a predetermined response from
-   `app/safety/reviewed_responses.json` (marked *pending clinical review*) and skips the LLM.
-2. **Evidence selection** — only `accepted` aggregated observations count as evidence; demo status and
-   image quality travel with them.
-3. **Sufficiency check** → `insufficient_evidence` route forbids describing any visual feature.
-4. **Retrieval** from a small curated knowledge base (project-authored, not clinically reviewed).
-5. **Generation** — Claude (`claude-opus-5-5`, effort `low`) via the Anthropic SDK with a Pydantic
-   structured-output schema (`AssistantReply`), cached static system prompt, server-side refusal fallback.
-6. **Validation** — no diagnostic language, no health scores, references ⊆ accepted evidence, visual
-   claims grounded per region, demo disclosure, professional referral on diagnosis requests. One retry with
-   the failures as feedback, then a grounded template fallback.
+Measured on the real catalogue ([docs/evaluation/recommendations.md](docs/evaluation/recommendations.md)):
+ingredient-exclusion violations 0 across 8 terms; fragrance-free violations 0 of 30 returned — but 21 of those 30
+were **unverifiable** (no ingredient list), which is why the strict option exists. Category precision@5 is 1.0
+by construction (a weak proxy); nDCG needs human relevance judgments, which have not been collected
+(template provided). Ranking latency p50 ≈ 12 ms.
 
-Model Lab shows the structured observations, selected evidence, redacted context preview, retrieval hits,
-per-step timings, validation results, token usage and the final answer — not hidden reasoning.
+LLM/pipeline evaluation ([docs/evaluation/llm.md](docs/evaluation/llm.md)): 8/8 chat cases (safety routing 2/2)
+and 4/4 recommendation cases with 0 product hallucinations and 0 preference violations — **with the offline
+template provider**; rerun `make eval-llm` with an API key to evaluate a hosted model.
 
-## Performance (measured, this sandbox only)
+## Real-time design
 
-4-vCPU container, CPU only, four ResNet-18 models at 128 px, `scripts/bench_ws.py` over localhost:
-7 regions per frame → **p50 ≈ 77 ms round-trip with PyTorch, ≈ 64–68 ms with ONNX Runtime**; a single
-region ≈ 14 ms. Details, per-stage timings and caveats (e.g. ONNX thread oversubscription) in
-[docs/performance.md](docs/performance.md). Browser-side FPS/latency are measured live in Model Lab.
+Camera rendering and landmark tracking run in the browser at display rate; classification is sampled
+(0.5–10 Hz, performance presets) with one frame in flight and a 1-slot server mailbox, so stale frames are
+dropped, never queued. Age runs only on opted-in frames; Grad-CAM runs on demand in a separate worker; the LLM
+runs only on user messages; product retrieval is local. Measured server latency (4 vCPU, CPU only): 7 regions ×
+4 models p50 ≈ 77 ms torch / ≈ 64–68 ms ONNX ([docs/performance.md](docs/performance.md)).
+
+## Model Lab & Frame Inspector
+
+The live camera/detection panel stays mounted on the left (so the camera never restarts); resizable tabs on the
+right: Overview · Model inputs · Live predictions · Age estimation · Explainability · Pipeline monitor ·
+eCosmetics data · Recommendation ranking · LLM context & trace · Performance · **Frame Inspector** (10 steps:
+captured frame → detection → landmarks → preprocessing → predictions → Grad-CAM → retrieval → ranking → LLM
+context → final response, Back/Next, privacy-safe export). Toolbar: input source (camera / labelled
+"SIMULATED INPUT"), camera picker, mirror toggle, Power saver / Balanced / Responsive presets, pause, freeze.
+
+![Recommendation ranking tab: per-product contribution bars, filters, weights, timings, validation](docs/images/model-lab-ranking.png)
+
+**Beauty page** (`/beauty`): camera + qualified observations (opt-in per observation) · assistant that can
+discuss selected products · ranked eCosmetics product cards (image, price or "not listed", size, shades,
+availability, last-checked/stale, quoted retailer claims, explanation, retailer link), filters, 3-way compare,
+age opt-in with confirm/correct/skip/disable, and an optional **simulated** lip-colour preview.
+
+Verified in headless Chromium against the real catalogue with synthetic input and a fake camera. **Not yet
+verified on a real face/webcam:** AR lip alignment, the Frame Inspector's camera-frame/landmark steps, live
+age estimates and camera switching between real devices.
 
 ## Privacy & safety
 
-Camera only on explicit click with a visible active indicator; nothing recorded; crops uploaded only after
-opt-in and never persisted; snapshots only with separate consent and fully deletable; Mirror/Lab/snapshot
-images never used for training — only Collect-page crops under a separate, withdrawable research consent;
-chat not logged by default; secrets server-side. No HIPAA or medical-device claims.
-See [docs/privacy-and-safety.md](docs/privacy-and-safety.md).
+Camera only on explicit click with an active indicator; nothing recorded; region crops only after opt-in and
+never persisted; age off by default and never stored; snapshots and training data each need their own consent
+and are fully deletable; no data to the retailer; secrets server-side; dev endpoints behind a token; chat not
+logged by default. No HIPAA or medical-device claims. [docs/privacy-and-safety.md](docs/privacy-and-safety.md).
 
 ## Testing
 
-* **Backend (pytest, 78 tests)**: crop alignment & clamping, face alignment, preprocessing parity, schema
-  contract (Pydantic ↔ TS ↔ JSON Schema), classifier inference, inconclusive/abstain handling, Grad-CAM,
-  ONNX parity, telemetry ordering, WebSocket consent/backpressure/reconnection/explain, safety routing,
-  validator, agent retry/fallback, Anthropic provider request shape (mocked), consent + deletion, log
-  hygiene, consented data collection/labelling/withdrawal, κ + consensus, tier and validation-gate enforcement, grouped-split leakage, metrics/calibration, end-to-end train → registry → inference, and an
-  integration test image → crops → models → observations → grounded chat.
-* **Frontend (vitest, 68 tests)**: region geometry (incl. a reference case shared with the backend test so
-  browser and server crops are pinned to identical numbers), letterbox overlay transform, quality heuristics,
-  camera permission/error mapping, WebSocket reconnect/backoff/session resume, telemetry ordering and bounds,
-  `regions.json` copy in sync with `shared/`.
-* **End-to-end (headless Chromium, manual script)**: Lab with synthetic input → real inference results in all
-  six panels, Grad-CAM, Lab chat + agent trace; Mirror with a fake camera → active indicator, stop, urgent
-  safety response; history compare/delete against the live API.
-* CI: `.github/workflows/ci.yml` (lint, contract check, tests, training smoke, Next build, Docker build).
+Backend pytest (`make test-backend`): CV geometry and alignment, preprocessing parity, schema contracts, inference,
+abstention, Grad-CAM, ONNX parity, telemetry ordering, WebSocket consent/backpressure/reconnect, safety router,
+validators, agent retry/fallback, Anthropic provider (mocked), data collection/withdrawal/κ, tiers and gate,
+**catalogue parsing, robots/policy enforcement (no request made for denied URLs), rate-limit circuit breaker,
+incremental refresh, dedupe, price history, staleness, feed import, ranking filters/missing-data neutrality/
+determinism/age gating, explanation validation, recommendation API events, product chat grounding, age opt-in
+gating and isolation, age metrics**. Frontend vitest + typecheck + lint + build. CI: `.github/workflows/ci.yml`.
 
-## Repository layout
+## Limitations & future work
 
-```
-backend/app/{api,cv,inference,llm,safety,schemas,storage,telemetry}   FastAPI service
-backend/training/  backend/evaluation/  backend/tests/                ML pipeline + tests
-frontend/app/{mirror,lab,history,privacy}                             Next.js routes
-frontend/components/{CameraView,FaceOverlay,ModelLab,HeatmapViewer,PredictionCharts,PipelineTrace,ChatAssistant,Mirror,History}
-frontend/lib/{engine,landmarker,regions,quality,crops,ws,telemetry,store,protocol}.ts   camera/MediaPipe/WS/telemetry core
-shared/regions.json  shared/schemas/                                  cross-language contracts
-models/  (generated, git-ignored)    scripts/    docker/    docs/
-```
+* Feature classifiers need real, consented, labelled webcam data before their outputs mean anything.
+* The age model is FairFace-trained; webcam domain shift and subgroup gaps need measurement on consented
+  webcam data; the under-20 range cannot distinguish minors.
+* 62 % of catalogue listings lack ingredient lists; multi-shade prices and shade lists are not on permitted pages.
+* Keyword-based triage and heuristic validators are safety nets, not guarantees; safety texts need clinical review.
+* Planned: human relevance judgments + nDCG, hosted-LLM evaluation runs, Redis-backed sessions for horizontal
+  scale, an authorised retailer feed, calibrated shade matching with a reference card.
 
-## Limitations & unfinished work
-
-See [docs/status.md](docs/status.md) for the per-phase status, what was verified and what remains.
+Status by phase: [docs/status.md](docs/status.md). Plan and access review: [docs/implementation-plan-v2.md](docs/implementation-plan-v2.md).

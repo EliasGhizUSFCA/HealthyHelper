@@ -1,4 +1,5 @@
 import { API_URL } from "./config";
+import type { CatalogCategory, CatalogProduct, CatalogStatus, RecommendationRequest, RecommendationResponse } from "./catalog";
 import type {
   ChatRequest,
   ChatResponse,
@@ -77,6 +78,26 @@ export const api = {
     req<DeletionReport>(`/api/dataset/contributors/${encodeURIComponent(contributorId)}`, { method: "DELETE" }),
   datasetStats: () => req<DatasetModelStats[]>("/api/dataset/stats"),
   datasetExport: (modelId: string) => req<DatasetExport>(`/api/dataset/export/${encodeURIComponent(modelId)}`, { method: "POST" }),
+  // eCosmetics catalogue (local) + recommendations
+  catalogStatus: () => req<CatalogStatus>("/api/catalog/status"),
+  catalogCategories: () => req<CatalogCategory[]>("/api/catalog/categories"),
+  catalogProducts: (q: { category?: string; mode?: string; brand?: string; q?: string; limit?: number } = {}) => {
+    const p = new URLSearchParams(Object.entries(q).filter(([, v]) => v != null && v !== "").map(([k, v]) => [k, String(v)]));
+    return req<CatalogProduct[]>(`/api/catalog/products?${p}`);
+  },
+  catalogProduct: (id: string) =>
+    req<{ product: CatalogProduct; price_history: Record<string, unknown>[] }>(`/api/catalog/products/${encodeURIComponent(id)}`),
+  crawlLog: (devToken: string | null, limit = 200) =>
+    req<{ entries: Record<string, unknown>[]; summary: Record<string, number> }>(`/api/catalog/crawl-log?limit=${limit}`, {
+      headers: devToken ? { "X-Dev-Token": devToken } : {},
+    }),
+  catalogRefresh: (devToken: string | null, perCategory: number, categories?: string[]) =>
+    req<{ started: boolean; running: boolean; note: string | null }>(
+      `/api/catalog/refresh?per_category=${perCategory}${categories?.length ? `&categories=${encodeURIComponent(categories.join(","))}` : ""}`,
+      { method: "POST", headers: devToken ? { "X-Dev-Token": devToken } : {} },
+    ),
+  refreshProgress: () => req<{ running: boolean; progress: Record<string, unknown> | null; last_result: Record<string, unknown> | null }>("/api/catalog/refresh/progress"),
+  recommend: (body: RecommendationRequest) => req<RecommendationResponse>("/api/recommendations", { method: "POST", body: JSON.stringify(body) }),
 };
 
 function localId(key: string, prefix: string, create = true): string | null {

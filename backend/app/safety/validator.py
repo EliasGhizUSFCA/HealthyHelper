@@ -52,7 +52,14 @@ def _positive_groups(obs: StructuredObservations | None) -> set[str]:
     return {REGION_GROUP[o.region] for o in obs.observations if o.status == "accepted" and o.present}
 
 
-def validate_reply(reply: AssistantReply, obs: StructuredObservations | None, diagnosis_requested: bool) -> list[ValidationCheck]:
+APPEARANCE_JUDGEMENT = re.compile(
+    r"\byou (?:need|should wear|have to wear|must wear) (?:makeup|concealer|foundation)\b|\b(?:flaws?|imperfections?|unsightly|problem areas?)\b|"
+    r"\b(?:fix|hide|correct) your (?:face|skin|spots|blemishes|dark circles|redness)\b|\blook (?:better|younger|older)\b|\bmore attractive\b", re.I)
+PRODUCT_EFFICACY = re.compile(r"\b(?:will|guaranteed to|clinically proven to|proven to) (?:cure|heal|treat|fix|eliminate|clear up)\b|\bcures?\b", re.I)
+
+
+def validate_reply(reply: AssistantReply, obs: StructuredObservations | None, diagnosis_requested: bool,
+                   products: list[dict] | None = None) -> list[ValidationCheck]:
     text = reply.message
     checks: list[ValidationCheck] = []
 
@@ -77,9 +84,15 @@ def validate_reply(reply: AssistantReply, obs: StructuredObservations | None, di
     for sent in re.split(r"(?<=[.!?])\s+", text):
         if not (FEATURE_WORDS.search(sent) and VISUAL_CLAIM.search(sent)) or HEDGE.search(sent):
             continue
-        for group, pat in REGION_WORDS.items():
-            if re.search(pat, sent, re.I) and group not in positive:
-                unsupported.append(f"{group}: '{sent[:80]}'")
+        # normalise "under your left eye" etc. so it is the under-eye region, not the eye itself
+        norm = re.sub(r"\b(?:the (?:area|skin) )?under (?:your |the )?(?:left |right )?eyes?\b", "under-eye", sent, flags=re.I)
+        for clause in re.split(r"[;,]|\band\b|\bbut\b", norm):
+            if not FEATURE_WORDS.search(clause):
+                continue
+            mentioned = [g for g, pat in REGION_WORDS.items() if re.search(pat, clause, re.I)]
+            # a clause is grounded if at least one region it talks about has accepted positive evidence
+            if mentioned and not set(mentioned) & positive:
+                unsupported.append(f"{'/'.join(mentioned)}: '{clause.strip()[:80]}'")
     checks.append(ValidationCheck(name="visual_claims_grounded", passed=not unsupported,
                                   detail="; ".join(unsupported) or "every visual claim maps to accepted evidence"))
 
@@ -94,6 +107,16 @@ def validate_reply(reply: AssistantReply, obs: StructuredObservations | None, di
     if diagnosis_requested:
         checks.append(ValidationCheck(name="diagnosis_request_redirected", passed=reply.suggests_professional,
                                       detail="suggests professional" if reply.suggests_professional else "must point to a professional"))
+
+    judg = APPEARANCE_JUDGEMENT.search(text)
+    checks.append(ValidationCheck(name="no_appearance_judgement", passed=not judg, detail=judg.group(0) if judg else "ok"))
+
+    if products is not None:
+        prices = {round(float(p["price"]), 2) for p in products if p.get("price") is not None}
+        bad = [m.group(0) for m in re.finditer(r"\$\s?(\d+(?:\.\d{1,2})?)", text) if round(float(m.group(1)), 2) not in prices]
+        checks.append(ValidationCheck(name="product_prices_match_records", passed=not bad, detail=", ".join(bad) or "ok"))
+        eff = PRODUCT_EFFICACY.search(text)
+        checks.append(ValidationCheck(name="no_product_efficacy_claims", passed=not eff, detail=eff.group(0) if eff else "ok"))
 
     checks.append(ValidationCheck(name="length_reasonable", passed=20 <= len(text) <= 1500, detail=f"{len(text)} chars"))
     return checks

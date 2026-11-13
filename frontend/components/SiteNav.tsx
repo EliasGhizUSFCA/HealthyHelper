@@ -2,6 +2,7 @@ import Link from "next/link";
 
 const LINKS = [
   { href: "/mirror", label: "Health Mirror" },
+  { href: "/beauty", label: "Beauty" },
   { href: "/lab", label: "Model Lab" },
   { href: "/history", label: "Comparisons" },
   { href: "/collect", label: "Collect" },
@@ -11,7 +12,7 @@ const LINKS = [
 
 export function SiteNav({ dark = false, current }: { dark?: boolean; current?: string }) {
   return (
-    <nav aria-label="Main" className={dark ? "flex items-center gap-3 text-xs" : "flex flex-wrap items-center gap-4 text-sm"}>
+    <nav aria-label="Main" className={dark ? "flex flex-wrap items-center gap-x-3 gap-y-1 text-xs" : "flex flex-wrap items-center gap-4 text-sm"}>
       <Link href="/" className={dark ? "font-semibold text-zinc-100" : "font-semibold text-slate-900"}>
         AI Health Mirror
       </Link>

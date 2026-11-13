@@ -1,5 +1,7 @@
 # Backend API Reference
 
+Types: `backend/app/schemas/protocol.py` + `backend/app/schemas/catalog.py` ↔ `frontend/lib/protocol.ts` + `frontend/lib/catalog.ts`.
+
 Base URL: `NEXT_PUBLIC_API_URL` (default `http://localhost:8000`). All types are defined in
 `backend/app/schemas/protocol.py` and mirrored in `frontend/lib/protocol.ts`.
 
@@ -20,6 +22,15 @@ Base URL: `NEXT_PUBLIC_API_URL` (default `http://localhost:8000`). All types are
 | GET | `/api/history/{history_id}/compare?before=ID&after=ID` | – | `ComparisonResult` | |
 | DELETE | `/api/history/{history_id}` | – | `DeletionReport` | Deletes every snapshot, image file and DB row for that history |
 | GET | `/api/privacy` | – | retention policy JSON | |
+| POST | `/api/dataset/consent` · `/api/dataset/samples` … | see `app/api/dataset.py` | | consented training-data collection & labelling |
+| GET | `/api/catalog/status` | – | `CatalogStatus` | product counts, stale counts, policy, sitemap cache, last refresh |
+| GET | `/api/catalog/categories` | – | categories | our taxonomy ↔ retailer paths |
+| GET | `/api/catalog/products?category&mode&brand&q` | – | `CatalogProduct[]` | local catalogue only |
+| GET | `/api/catalog/products/{id}` | – | `{product, price_history}` | |
+| GET | `/api/catalog/crawl-log` | – | `{entries, summary}` | dev token (`X-Dev-Token`) when `DEV_API_TOKEN` is set |
+| POST | `/api/catalog/refresh?per_category&categories` | – | `{started}` | background job; dev token |
+| GET | `/api/catalog/refresh/progress` | – | progress + last result | |
+| POST | `/api/recommendations` | `RecommendationRequest` | `RecommendationResponse` | ranking + grounded explanations + trace + telemetry events |
 
 ## WebSocket `/ws/inference`
 

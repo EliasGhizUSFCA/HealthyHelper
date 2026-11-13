@@ -66,12 +66,32 @@ export function checkCameraSupport(): CameraError | null {
   return null;
 }
 
-export async function startCamera(video: HTMLVideoElement): Promise<MediaStream> {
+export interface CameraDevice {
+  deviceId: string;
+  label: string;
+}
+
+/** Video inputs. Labels are only available after camera permission was granted once. */
+export async function listCameras(): Promise<CameraDevice[]> {
+  if (typeof navigator === "undefined" || !navigator.mediaDevices?.enumerateDevices) return [];
+  const devices = await navigator.mediaDevices.enumerateDevices();
+  return devices
+    .filter((d) => d.kind === "videoinput")
+    .map((d, i) => ({ deviceId: d.deviceId, label: d.label || `Camera ${i + 1}` }));
+}
+
+/** getUserMedia constraints: a specific device if chosen, otherwise the front ("user") camera. */
+export function videoConstraints(deviceId?: string | null): MediaTrackConstraints {
+  const base: MediaTrackConstraints = { width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 30 } };
+  return deviceId ? { ...base, deviceId: { exact: deviceId } } : { ...base, facingMode: "user" };
+}
+
+export async function startCamera(video: HTMLVideoElement, deviceId?: string | null): Promise<MediaStream> {
   const unsupported = checkCameraSupport();
   if (unsupported) throw Object.assign(new Error(unsupported.message), { name: unsupported.kind === "insecure_context" ? "InsecureContextError" : "UnsupportedError" });
   const stream = await navigator.mediaDevices.getUserMedia({
     audio: false,
-    video: { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: "user", frameRate: { ideal: 30 } },
+    video: videoConstraints(deviceId),
   });
   video.srcObject = stream;
   video.muted = true;

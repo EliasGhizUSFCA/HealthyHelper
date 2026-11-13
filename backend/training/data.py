@@ -59,12 +59,17 @@ def group_key(s: Sample, group_by: str = "subject_id") -> str:
 
 
 def grouped_split(samples: list[Sample], val_frac: float = 0.15, test_frac: float = 0.15, seed: int = 42,
-                  group_by: str = "subject_id") -> dict[str, list[Sample]]:
+                  group_by: str = "subject_id", split_column: str | None = None) -> dict[str, list[Sample]]:
     """Deterministic split where every group (subject, or subject/session) lands in exactly one split.
 
     If a split would end up empty (few groups), groups are assigned by sorted hash order instead
     so that each split gets at least one group when there are >= 3 groups.
     """
+    if split_column:  # dataset ships an official test split (e.g. FairFace validation) → keep it as TEST
+        test = [s for s in samples if s.meta.get(split_column) == "test"]
+        rest = [s for s in samples if s.meta.get(split_column) != "test"]
+        inner = grouped_split(rest, val_frac, 0.0, seed, group_by)
+        return {"train": inner["train"] + inner["test"], "val": inner["val"], "test": test}
     splits: dict[str, list[Sample]] = {"train": [], "val": [], "test": []}
     groups = sorted({group_key(s, group_by) for s in samples}, key=lambda g: subject_bucket(g, seed))
     assign: dict[str, str] = {}

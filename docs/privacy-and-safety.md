@@ -16,6 +16,11 @@ diagnostic claims, and has not been assessed for HIPAA, GDPR-health-data, or med
 | Mirror/Lab/snapshot images for training | **Never** used for training | — | — | — |
 | Training crops (Collect page) | **Not collected** | Separate research consent; crops ≤ 256 px of each region + optional self-reported conditions, linked to a random contributor ID | until withdrawn or deleted | Withdraw on `/collect` → `DELETE /api/dataset/contributors/{id}` removes all crops, labels and the consent record (tested). Retrain or delete models trained on them. |
 
+| Apparent-age estimate | **Off** | Opt-in toggle; a whole-face crop is sent only while it is on | not stored anywhere; never sent to the LLM | n/a |
+| Confirmed age range | – | Chosen by the user after an estimate (or directly) | browser memory for the tab only | closing the tab |
+| Product recommendation requests | – | Concern/preferences the user selects | not stored | n/a |
+| Data sent to the retailer | **None** | — | — | The catalogue job requests public product pages only; recommendations run on the local catalogue. Product images are loaded by the browser from the retailer's CDN, so the retailer can see a viewer's IP address and that an image was requested (no other data). |
+
 Additional controls:
 * Labels and model outputs describe appearance ("visible spots"), never conditions ("acne"); the validator blocks
   condition names such as acne, rosacea or dermatitis being attributed to the user.
@@ -48,6 +53,17 @@ Additional controls:
 7. **Explainability caveat.** Grad-CAM heatmaps are labelled as approximate attributions.
 8. **Longitudinal caveat.** Visual differences are presented with explicit caveats and lighting
    comparability flags, never as improvement or deterioration.
+
+## Age, products and appearance
+
+* Apparent age is a broad range with an uncertainty span and a disclaimer; it is never used for identity,
+  access decisions, health statements or rankings. Only a range the user confirms can affect recommendations,
+  and only to exclude products marketed with anti-aging/peel claims for a confirmed under-18 range.
+* Recommendations are user-directed (the user picks a concern or makeup goal); visual observations are used
+  only if the user ticks them. Validators block "you need makeup / hide your …", attractiveness or age
+  comments, product efficacy claims ("cures", "treats acne"), invented prices and products outside the
+  retrieved set. Product text is labelled as retailer/brand marketing.
+* The AR preview is off until the user selects a colour and turns it on, and is labelled as a simulation.
 
 ## Known limitations
 

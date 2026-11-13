@@ -9,6 +9,11 @@ from app.inference.engine import InferenceEngine
 from app.inference.registry import ModelRegistry
 from app.llm.agent import HealthAssistant
 from app.llm.providers import make_provider
+from app.recommendations.catalog.refresh import RefreshJob
+from app.recommendations.catalog.store import CatalogStore
+from app.recommendations.scraper.discovery import SitemapCache
+from app.recommendations.scraper.policy import AccessPolicy
+from app.recommendations.service import RecommendationService
 from app.sessions import SessionStore
 from app.storage.dataset import DatasetStore
 from app.storage.history import HistoryStore
@@ -31,6 +36,11 @@ class Services:
     assistant: HealthAssistant
     history: HistoryStore
     dataset: DatasetStore
+    catalog: CatalogStore
+    catalog_policy: AccessPolicy
+    sitemap_cache: SitemapCache
+    refresh_job: RefreshJob
+    recommender: RecommendationService
     counters: Counters = field(default_factory=Counters)
 
 
@@ -39,7 +49,11 @@ def build_services(settings: Settings | None = None, load_models: bool = True, p
     reg = ModelRegistry(s)
     if load_models:
         reg.load_all()
+    llm = provider or make_provider(s)
+    catalog = CatalogStore(s)
     return Services(
         settings=s, registry=reg, engine=InferenceEngine(reg, s), sessions=SessionStore(),
-        assistant=HealthAssistant(provider or make_provider(s), s), history=HistoryStore(s), dataset=DatasetStore(s),
+        assistant=HealthAssistant(llm, s, catalog), history=HistoryStore(s), dataset=DatasetStore(s),
+        catalog=catalog, catalog_policy=AccessPolicy(), sitemap_cache=SitemapCache(s.data_dir / "catalog_cache" / "sitemap.json"),
+        refresh_job=RefreshJob(catalog), recommender=RecommendationService(catalog, llm),
     )

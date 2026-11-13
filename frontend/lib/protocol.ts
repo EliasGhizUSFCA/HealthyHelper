@@ -19,7 +19,8 @@ export type RegionName =
   | "skin_right_cheek"
   | "skin_chin"
   | "left_undereye"
-  | "right_undereye";
+  | "right_undereye"
+  | "face";
 
 export const PIPELINE_ORDER = [
   "camera_capture",
@@ -28,8 +29,12 @@ export const PIPELINE_ORDER = [
   "landmark_extraction",
   "region_cropping",
   "preprocessing",
+  "age_estimation",
   "cv_inference",
   "structured_observations",
+  "user_preferences",
+  "product_retrieval",
+  "product_ranking",
   "llm_request",
   "response_validation",
   "ui_render",
@@ -55,6 +60,9 @@ export interface TelemetryEvent {
   model_version?: string | null;
   message?: string | null;
   seq: number;
+  event_id?: string | null;
+  output?: Record<string, unknown> | null;
+  error?: string | null;
 }
 
 export interface QualityMetrics {
@@ -160,6 +168,8 @@ export interface FrameOptions {
   return_inputs?: boolean;
   thresholds?: Record<string, number>;
   enabled_models?: string[] | null;
+  /** User opted in to apparent-age estimation (default false). Only then may a "face" crop be sent. */
+  enable_age?: boolean;
 }
 
 // ---- client -> server ----
@@ -201,6 +211,23 @@ export interface ServerHelloAck {
   server_time: number;
   max_queue: number;
 }
+export interface AgeEstimate {
+  model_id: string;
+  model_version: string;
+  model_tier: ModelTier;
+  classes: string[];
+  probabilities: number[];
+  top_range: string | null;
+  top_probability: number | null;
+  expected_age_years: number | null;
+  plausible_ranges: string[];
+  entropy_bits: number | null;
+  decision: Decision;
+  decision_reason: string;
+  latency_ms: number;
+  input?: ModelInput | null;
+  disclaimer: string;
+}
 export interface InferenceResult {
   type: "inference_result";
   session_id: string;
@@ -213,6 +240,7 @@ export interface InferenceResult {
   predictions: Prediction[];
   observations: StructuredObservations;
   events: TelemetryEvent[];
+  age?: AgeEstimate | null;
 }
 export interface FrameDropped {
   type: "frame_dropped";
@@ -275,6 +303,8 @@ export interface ChatRequest {
   messages: ChatMessage[];
   user_reported_symptoms: string[];
   observations?: StructuredObservations | null;
+  /** Catalogue product ids the user selected to discuss (max 6). */
+  product_ids?: string[];
 }
 export interface AssistantReply {
   message: string;
@@ -367,16 +397,17 @@ export interface ComparisonResult {
 
 /** Field names per message, verified against Pydantic by the backend contract test. */
 export const PROTOCOL_FIELDS: Record<string, string[]> = {
-  TelemetryEvent: ["session_id", "frame_id", "stage", "status", "origin", "started_at", "duration_ms", "input_type", "output_type", "model_id", "model_version", "message", "seq"],
+  TelemetryEvent: ["session_id", "frame_id", "stage", "status", "origin", "started_at", "duration_ms", "input_type", "output_type", "model_id", "model_version", "message", "seq", "event_id", "output", "error"],
   Prediction: ["model_id", "model_version", "model_tier", "region", "feature", "classes", "probabilities", "top_class", "top_probability", "positive_probability", "threshold", "decision", "decision_reason", "latency_ms", "input"],
   Observation: ["region", "feature", "confidence", "status", "present", "model_id", "model_version", "model_tier", "frames_aggregated"],
   StructuredObservations: ["image_quality", "quality_issues", "observations", "user_reported_symptoms", "medical_diagnosis_requested", "demo_mode", "validation_status", "generated_at"],
   ClientFrame: ["type", "frame_id", "captured_at", "quality", "regions", "client_events", "options"],
-  InferenceResult: ["type", "session_id", "frame_id", "captured_at", "received_at", "completed_at", "queue_wait_ms", "image_quality", "predictions", "observations", "events"],
+  InferenceResult: ["type", "session_id", "frame_id", "captured_at", "received_at", "completed_at", "queue_wait_ms", "image_quality", "predictions", "observations", "events", "age"],
   Explanation: ["type", "request_id", "model_id", "model_version", "region", "method", "target_class", "target_probability", "input_b64", "heatmap_b64", "latency_ms", "caveat"],
   ServerMetrics: ["type", "t", "cpu_percent", "rss_mb", "frames_received", "frames_processed", "frames_dropped", "frames_rejected", "queue_depth", "device"],
   ModelInfo: ["model_id", "version", "tier", "feature", "regions", "classes", "positive_class", "input_size", "normalization", "backbone", "runtime", "default_threshold", "explainable", "status_message", "training_summary", "metrics"],
   AgentTrace: ["provider", "model", "route", "steps", "evidence", "selected_evidence", "retrieval", "context_preview", "validation", "attempts", "latency_ms", "usage"],
+  AgeEstimate: ["model_id", "model_version", "model_tier", "classes", "probabilities", "top_range", "top_probability", "expected_age_years", "plausible_ranges", "entropy_bits", "decision", "decision_reason", "latency_ms", "input", "disclaimer"],
   AssistantReply: ["message", "follow_up_questions", "referenced_observations", "evidence_sufficient", "suggests_professional"],
 };
 

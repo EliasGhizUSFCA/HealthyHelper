@@ -15,13 +15,14 @@ sys.path.insert(0, str(ROOT / "backend"))
 
 from pydantic import BaseModel  # noqa: E402
 
-from app.schemas import protocol  # noqa: E402
+from app.schemas import catalog, protocol  # noqa: E402
 
 OUT = ROOT / "shared" / "schemas" / "protocol.schema.json"
 
 
 def build() -> str:
-    models = {n: m for n, m in vars(protocol).items() if isinstance(m, type) and issubclass(m, BaseModel) and m.__module__ == protocol.__name__ and not n.startswith("_")}
+    models = {n: m for mod in (protocol, catalog) for n, m in vars(mod).items()
+              if isinstance(m, type) and issubclass(m, BaseModel) and m.__module__ == mod.__name__ and not n.startswith("_")}
     defs = {n: m.model_json_schema(ref_template="#/$defs/{model}") for n, m in sorted(models.items())}
     flat: dict = {}
     for n, s in defs.items():

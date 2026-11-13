@@ -1,6 +1,6 @@
 {
   "$comment": "Single source of truth for facial region extraction. Indices refer to the 478-point MediaPipe Face Landmarker topology. 'left'/'right' are from the SUBJECT's perspective (MediaPipe convention), not the viewer's. Consumed by frontend/lib/regions.ts and backend/app/cv/regions.py.",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "regions": {
     "lips": {
       "label": "Lips",
@@ -71,6 +71,13 @@
       "margin": 0.05,
       "square": true,
       "min_size_px": 24
+    },
+    "face": {
+      "label": "Whole face (age estimation only, sent only when opted in)",
+      "landmarks": [10, 338, 297, 332, 284, 251, 389, 356, 454, 323, 361, 288, 397, 365, 379, 378, 400, 377, 152, 148, 176, 149, 150, 136, 172, 58, 132, 93, 234, 127, 162, 21, 54, 103, 67, 109],
+      "margin": 0.12,
+      "square": true,
+      "min_size_px": 48
     }
   },
   "alignment": {

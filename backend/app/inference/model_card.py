@@ -19,6 +19,7 @@ class ModelCard(BaseModel):
     input_size: int
     normalization: dict[str, list[float]]
     default_threshold: float = 0.7
+    task: str = "binary_feature"
     temperature: float = Field(1.0, description="Post-hoc temperature-scaling factor fitted on the validation split")
     created_at: str
     weights_file: str = "weights.pt"

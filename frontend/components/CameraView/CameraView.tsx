@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useEngine, useEngineState } from "@/hooks/useEngine";
 import { meshConnections, type Connection } from "@/lib/landmarker";
 import { displayTransform } from "@/lib/regions";
@@ -14,12 +14,15 @@ export function CameraView({
   fit = "contain",
   className,
   dark = true,
+  children,
 }: {
   layers: OverlayLayers;
   mirrored?: boolean;
   fit?: "contain" | "cover";
   className?: string;
   dark?: boolean;
+  /** extra layers rendered above the overlay (e.g. the simulated AR preview) */
+  children?: ReactNode;
 }) {
   const engine = useEngine();
   const state = useEngineState();
@@ -82,6 +85,7 @@ export function CameraView({
         muted
       />
       <canvas ref={canvasRef} className="pointer-events-none absolute inset-0 h-full w-full" aria-hidden />
+      {children}
       {synthetic && (
         <div className="absolute inset-0 flex flex-col gap-2 overflow-auto p-2">
           <div className="rounded border border-fuchsia-600 bg-fuchsia-950/80 px-2 py-1 text-center font-mono text-[11px] font-bold uppercase tracking-widest text-fuchsia-200">

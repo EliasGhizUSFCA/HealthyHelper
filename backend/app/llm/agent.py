@@ -49,11 +49,22 @@ class _Steps:
         self.steps.append(TraceStep(name=name, status=status, duration_ms=round(perf_ms() - t0, 3), detail=detail))
 
 
+def compact_product(p) -> dict:
+    """Only listed fields, truncated — product text is untrusted retailer content."""
+    return {
+        "product_id": p.product_id, "name": p.name, "brand": p.brand, "price": p.price, "currency": p.currency, "price_status": p.price_status,
+        "size": p.size, "categories": p.categories, "availability": p.availability, "stale": p.stale, "url": p.url,
+        "description": (p.description or "")[:500] or None, "usage": (p.usage or "")[:300] or None,
+        "ingredients": (p.ingredients or "")[:700] or None, "attributes": p.attributes.model_dump(),
+    }
+
+
 class HealthAssistant:
-    def __init__(self, provider, settings: Settings | None = None):
+    def __init__(self, provider, settings: Settings | None = None, catalog=None):
         self.provider = provider
         self.settings = settings or get_settings()
         self.fallback = OfflineTemplateProvider()
+        self.catalog = catalog
 
     def respond(self, req: ChatRequest, server_obs: StructuredObservations | None) -> ChatResponse:
         t_start, wall_start = perf_ms(), now_ms()
@@ -100,12 +111,18 @@ class HealthAssistant:
                                  [x.model_dump() for x in obs.observations]],
                 "medical_diagnosis_requested": obs.medical_diagnosis_requested,
             }
-        context_text = render_context(evidence_payload, docs, symptoms, route)
+        products = []
+        if req.product_ids and self.catalog is not None:
+            t0 = perf_ms()
+            products = [compact_product(p) for pid in req.product_ids[:6] if (p := self.catalog.get(pid))]
+            steps.add("product_context", t0, requested=len(req.product_ids), found=len(products), ids=[p["product_id"] for p in products])
+        context_text = render_context(evidence_payload, docs, symptoms, route, products or None)
         history = [{"role": m.role, "content": m.content} for m in req.messages[:-1]][-10:]
         if history and history[0]["role"] != "user":
             history = history[1:]
         messages = history + [{"role": "user", "content": f"{context_text}\n\n<user_message>\n{last_user}\n</user_message>"}]
-        offline_ctx = {"evidence": selected, "demo_mode": bool(obs and obs.demo_mode), "retrieved": docs, "route": route,
+        offline_ctx = {"evidence": selected, "demo_mode": bool(obs and obs.demo_mode), "retrieved": docs, "route": route, "products": products,
+                       "question": last_user,
                        "validation_status": obs.validation_status if obs else "none",
                        "image_quality": obs.image_quality if obs else None}
         preview = redact(f"[system prompt: {len(SYSTEM_PROMPT)} chars, static]\n" + "\n".join(
@@ -138,7 +155,7 @@ class HealthAssistant:
                 reply = None
                 break
             t0, v_wall = perf_ms(), now_ms()
-            checks = validate_reply(reply, obs, route == "diagnosis_request")
+            checks = validate_reply(reply, obs, route == "diagnosis_request", products if req.product_ids else None)
             failed = [c for c in checks if not c.passed]
             steps.add(f"validate#{attempt + 1}", t0, StageStatus.ok if not failed else StageStatus.warning,
                       failed=[c.name for c in failed])
@@ -153,7 +170,7 @@ class HealthAssistant:
         if reply is None:
             t0 = perf_ms()
             reply = compose(offline_ctx, last_user)
-            checks = validate_reply(reply, obs, route == "diagnosis_request")
+            checks = validate_reply(reply, obs, route == "diagnosis_request", products if req.product_ids else None)
             final_route = "fallback"
             steps.add("grounded_template_fallback", t0, StageStatus.warning, reason="provider error or validation failed twice",
                       checks_passed=all(c.passed for c in checks))

@@ -15,6 +15,7 @@ const LAYER_LABELS: [keyof Omit<OverlayLayers, "modelRegions">, string][] = [
   ["nose", "Nose"],
   ["skin", "Skin"],
   ["undereye", "Under-eye"],
+  ["face", "Face (age)"],
   ["tracking", "Tracking"],
   ["quality", "Quality"],
 ];
@@ -25,7 +26,6 @@ export function LivePanel() {
   const tel = useTelemetry();
   const [layers, setLayers] = useState<OverlayLayers>(DEFAULT_LAYERS);
   const [modelSel, setModelSel] = useState<string>("");
-  const [mirrored, setMirrored] = useState(true);
   const modelRegions = useMemo(() => state.models.find((m) => m.model_id === modelSel)?.regions ?? [], [state.models, modelSel]);
   const effLayers = useMemo(() => ({ ...layers, modelRegions }), [layers, modelRegions]);
   const last = tel.series[tel.series.length - 1];
@@ -52,7 +52,7 @@ export function LivePanel() {
           {LAYER_LABELS.map(([k, label]) => (
             <LabToggle key={k} label={label} checked={layers[k]} onChange={(v) => setLayers((l) => ({ ...l, [k]: v }))} />
           ))}
-          <LabToggle label="Mirror" checked={mirrored} onChange={setMirrored} title="Display only; crops always come from the unmirrored frame" />
+          <LabToggle label="Mirror" checked={state.settings.mirrored} onChange={(v) => engine.updateSettings({ mirrored: v })} title="Display only; crops always come from the unmirrored frame" />
           <label className="flex items-center gap-1 text-[11px] text-zinc-400">
             Model regions
             <select value={modelSel} onChange={(e) => setModelSel(e.target.value)} className="rounded border border-zinc-700 bg-zinc-900 px-1 py-0.5 text-[11px] text-zinc-200">
@@ -66,7 +66,7 @@ export function LivePanel() {
           </label>
         </div>
         <div className="relative min-h-40 flex-1 overflow-hidden rounded border border-zinc-800">
-          <CameraView layers={effLayers} mirrored={mirrored} fit="contain" />
+          <CameraView layers={effLayers} mirrored={state.settings.mirrored} fit="contain" />
         </div>
         <div className="grid grid-cols-3 gap-1.5 sm:grid-cols-6">
           <Stat label="Camera frames" value={tel.counters.cameraFrames} title="Distinct video frames rendered (not inference calls)" />

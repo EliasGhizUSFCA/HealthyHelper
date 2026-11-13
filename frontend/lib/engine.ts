@@ -4,7 +4,9 @@
  */
 import type { FaceLandmarker, FaceLandmarkerResult } from "@mediapipe/tasks-vision";
 import { api } from "./api";
-import { mapCameraError, startCamera, stopStream, type CameraError } from "./camera";
+import { listCameras, mapCameraError, startCamera, stopStream, type CameraDevice, type CameraError } from "./camera";
+import { ageForRecommendation, ageReducer, filterRegionsForAge, INITIAL_AGE, type AgeAction, type AgeState } from "./age";
+import type { RecommendationRequest, RecommendationResponse } from "./catalog";
 import { WS_URL } from "./config";
 import { captureFrame, cropToDataUrl, roiPixels } from "./crops";
 import { loadFaceLandmarker } from "./landmarker";
@@ -41,6 +43,33 @@ export interface EngineSettings {
   thresholds: Record<string, number>;
   syntheticIntensity: number;
   autoExplainSec: number; // 0 = off
+  /** Opt-in apparent-age estimation (default OFF). Only then is the whole-face crop sent. */
+  enableAge: boolean;
+  /** Selected camera (null = default front-facing camera). */
+  deviceId: string | null;
+  /** Display-only mirroring of the preview. */
+  mirrored: boolean;
+}
+
+export interface FrameRecord {
+  frameId: number;
+  capturedAt: number;
+  canvas: HTMLCanvasElement;
+  landmarks: Point2[] | null;
+  faces: number;
+  regions: RegionBox[];
+  quality: ImageQuality;
+  detectMs: number;
+}
+
+export interface RecommendationState {
+  pending: boolean;
+  error: string | null;
+  request: RecommendationRequest | null;
+  response: RecommendationResponse | null;
+  /** client round trip, ms */
+  roundTripMs: number | null;
+  at: number | null;
 }
 
 export interface StoredCrop {
@@ -85,6 +114,11 @@ export interface EngineState {
   /** Estimated server_clock - client_clock (ms), from ping/pong (NTP-style, RTT/2 assumption). */
   clockOffsetMs: number | null;
   chat: ChatState;
+  age: AgeState;
+  cameras: CameraDevice[];
+  recommendation: RecommendationState;
+  /** product ids the user selected to discuss with the assistant */
+  chatProductIds: string[];
 }
 
 /** Live (per-render) data, intentionally outside React state. */
@@ -110,6 +144,9 @@ export const DEFAULT_SETTINGS: EngineSettings = {
   thresholds: {},
   syntheticIntensity: 0.6,
   autoExplainSec: 0,
+  enableAge: false,
+  deviceId: null,
+  mirrored: true,
 };
 
 function stripPreviews(r: InferenceResult): InferenceResult {
@@ -170,6 +207,10 @@ export class AnalysisEngine extends Store<EngineState> {
       serverError: null,
       clockOffsetMs: null,
       chat: { messages: [], pending: false, error: null, lastResponse: null, symptoms: [], replyMeta: {} },
+      age: { ...INITIAL_AGE, enabled: settings.enableAge },
+      cameras: [],
+      recommendation: { pending: false, error: null, request: null, response: null, roundTripMs: null, at: null },
+      chatProductIds: [],
     });
     this.mode = mode;
     this.socket = new InferenceSocket({ url: WS_URL, consent: settings.consentUpload });
@@ -262,11 +303,40 @@ export class AnalysisEngine extends Store<EngineState> {
     if (!this.video) return;
     this.setState({ camera: "starting", cameraError: null });
     try {
-      this.stream = await startCamera(this.video);
+      this.stream = await startCamera(this.video, this.state.settings.deviceId);
       this.setState({ camera: "on" });
       void this.ensureLandmarker();
+      void this.refreshCameras();
     } catch (e) {
       this.setState({ camera: "error", cameraError: mapCameraError(e) });
+    }
+  }
+
+  async refreshCameras() {
+    try {
+      this.setState({ cameras: await listCameras() });
+    } catch {
+      /* enumerateDevices unavailable */
+    }
+  }
+
+  /** Switch camera; restarts the stream if it is running. */
+  async selectCamera(deviceId: string | null) {
+    this.updateSettings({ deviceId });
+    if (this.state.camera === "on") {
+      this.stopCamera();
+      await this.startCamera();
+    }
+  }
+
+  // ------------------------------------------------------------------ age (opt-in, in-memory only)
+  dispatchAge(a: AgeAction) {
+    const age = ageReducer(this.state.age, a);
+    this.setState({ age });
+    if (age.enabled !== this.state.settings.enableAge) this.updateSettings({ enableAge: age.enabled });
+    if (!age.enabled && this.state.latestResult?.age) {
+      // forget any estimate as soon as age estimation is disabled
+      this.setState({ latestResult: { ...this.state.latestResult, age: null } });
     }
   }
 
@@ -435,8 +505,24 @@ export class AnalysisEngine extends Store<EngineState> {
     }
     events.push(this.ev(frameId, "region_cropping", regions.length ? "ok" : "warning", t4, performance.now() - t4, "RGBA frame + landmarks", `${regions.length} JPEG crops ≤160px`, regions.length < boxes.length ? `${boxes.length - regions.length} region(s) too small` : undefined));
     this.telemetry.recordEvents(events, capturedAt);
-    this.setState({ lastCrops: { ...this.state.lastCrops, ...crops } });
+    const visibleCrops = this.state.settings.enableAge ? crops : Object.fromEntries(Object.entries(crops).filter(([k]) => k !== "face"));
+    this.setState({ lastCrops: { ...this.state.lastCrops, ...visibleCrops } });
+    if (this.mode === "lab") this.rememberFrame({ frameId, capturedAt, canvas, landmarks: lm, faces, regions: boxes, quality, detectMs: d?.ms ?? 0 });
     return this.makeFrame(frameId, capturedAt, quality, regions, events);
+  }
+
+  private frameRecords: FrameRecord[] = [];
+  private rememberFrame(r: FrameRecord) {
+    // copy pixels: the capture canvas is reused for the next frame
+    const copy = document.createElement("canvas");
+    copy.width = r.canvas.width;
+    copy.height = r.canvas.height;
+    copy.getContext("2d")?.drawImage(r.canvas, 0, 0);
+    this.frameRecords = [...this.frameRecords, { ...r, canvas: copy }].slice(-4);
+  }
+  /** Captured frame + detection for a given inference frame id (lab mode, last 4 frames only). */
+  frameRecord(frameId: number): FrameRecord | null {
+    return this.frameRecords.find((f) => f.frameId === frameId) ?? null;
   }
 
   private buildSyntheticFrame(): ClientFrame {
@@ -463,6 +549,7 @@ export class AnalysisEngine extends Store<EngineState> {
     events.push(this.ev(frameId, "region_cropping", "ok", t1, performance.now() - t1, "procedural generator", `${regions.length} SIMULATED crops`, "SIMULATED INPUT"));
     this.telemetry.recordEvents(events, capturedAt);
     this.live.quality = quality;
+    if (!this.state.settings.enableAge) delete crops.face;
     this.setState({ lastCrops: crops, lastQuality: quality });
     return this.makeFrame(frameId, capturedAt, quality, regions, events);
   }
@@ -474,9 +561,9 @@ export class AnalysisEngine extends Store<EngineState> {
       frame_id: frameId,
       captured_at: capturedAt,
       quality,
-      regions,
+      regions: filterRegionsForAge(regions, s.enableAge),
       client_events: events,
-      options: { return_inputs: s.returnInputs, thresholds: s.thresholds, enabled_models: null },
+      options: { return_inputs: s.returnInputs, thresholds: s.thresholds, enabled_models: null, enable_age: s.enableAge },
     };
   }
 
@@ -536,9 +623,9 @@ export class AnalysisEngine extends Store<EngineState> {
     this.setState({ frozen: { result: this.state.latestResult, crops: { ...this.state.lastCrops }, frameImage } });
   }
 
-  requestExplain(modelId: string, region: RegionName) {
+  requestExplain(modelId: string, region: RegionName, cropDataUrl?: string) {
     const crops = this.state.frozen?.crops ?? this.state.lastCrops;
-    const crop = crops[region];
+    const crop = cropDataUrl ? { dataUrl: cropDataUrl } : crops[region];
     if (!crop) {
       this.setState({ explainError: "No crop available for this region yet. Start analysis first." });
       return;
@@ -617,6 +704,7 @@ export class AnalysisEngine extends Store<EngineState> {
         messages: messages.slice(-20),
         user_reported_symptoms: this.state.chat.symptoms,
         observations: this.state.latestResult?.observations ?? null,
+        product_ids: this.state.chatProductIds.slice(0, 6),
       });
       this.telemetry.recordEvents(res.events);
       this.telemetry.recordEvents([
@@ -636,6 +724,32 @@ export class AnalysisEngine extends Store<EngineState> {
       });
     } catch (e) {
       this.setState({ chat: { ...this.state.chat, pending: false, error: String((e as Error).message ?? e) } });
+    }
+  }
+
+  setChatProducts(ids: string[]) {
+    this.setState({ chatProductIds: ids.slice(0, 6) });
+  }
+
+  // ------------------------------------------------------------------ recommendations
+  /** Ask the backend for ranked products. Only a USER-CONFIRMED age range is ever attached. */
+  async recommend(req: Omit<RecommendationRequest, "confirmed_age_range" | "session_id">): Promise<RecommendationResponse | null> {
+    const request: RecommendationRequest = {
+      ...req,
+      session_id: this.state.socket.sessionId ?? null,
+      confirmed_age_range: ageForRecommendation(this.state.age),
+    };
+    this.setState({ recommendation: { ...this.state.recommendation, pending: true, error: null, request } });
+    const t0 = performance.now();
+    try {
+      const response = await api.recommend(request);
+      const roundTripMs = performance.now() - t0;
+      this.telemetry.recordEvents(response.events as unknown as TelemetryEvent[]);
+      this.setState({ recommendation: { pending: false, error: null, request, response, roundTripMs, at: Date.now() } });
+      return response;
+    } catch (e) {
+      this.setState({ recommendation: { ...this.state.recommendation, pending: false, error: String((e as Error).message ?? e) } });
+      return null;
     }
   }
 
