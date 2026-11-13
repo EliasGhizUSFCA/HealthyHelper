@@ -179,10 +179,17 @@ context → final response, Back/Next, privacy-safe export). Toolbar: input sour
 
 ![Recommendation ranking tab: per-product contribution bars, filters, weights, timings, validation](docs/images/model-lab-ranking.png)
 
-**Beauty page** (`/beauty`): camera + qualified observations (opt-in per observation) · assistant that can
-discuss selected products · ranked eCosmetics product cards (image, price or "not listed", size, shades,
-availability, last-checked/stale, quoted retailer claims, explanation, retailer link), filters, 3-way compare,
-age opt-in with confirm/correct/skip/disable, and an optional **simulated** lip-colour preview.
+**Seamless recommendations.**
+* **Product ideas sidebar** on the Health Mirror (`🛍 Product ideas`, off until you open it): sits next to the
+  live video, follows what the mirror notices (accepted observations → neutral chips like "Lip care") or any chip
+  you tap, refreshes only when the suggestion changes, with quick fragrance-free / max-price toggles.
+* **Ask in plain words** — in any chat ("recommend a fragrance-free lip balm under $15") or the Beauty search box —
+  and real products come back inside the reply. A deterministic parser (`recommendations/intent.py`) turns the
+  text into preferences; urgent-symptom messages are never turned into shopping.
+* **Beauty page** (`/beauty`): one search box + one-tap chips, results grid, assistant alongside; detailed
+  filters, camera, apparent-age opt-in and the simulated lip-colour preview are tucked into collapsible sections.
+  When a budget or fragrance-free is set, products verified to match are listed before ones whose price or
+  ingredients couldn't be checked.
 
 Verified in headless Chromium against the real catalogue with synthetic input and a fake camera. **Not yet
 verified on a real face/webcam:** AR lip alignment, the Frame Inspector's camera-frame/landmark steps, live

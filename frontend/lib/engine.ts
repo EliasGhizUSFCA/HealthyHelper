@@ -6,7 +6,7 @@ import type { FaceLandmarker, FaceLandmarkerResult } from "@mediapipe/tasks-visi
 import { api } from "./api";
 import { listCameras, mapCameraError, startCamera, stopStream, type CameraDevice, type CameraError } from "./camera";
 import { ageForRecommendation, ageReducer, filterRegionsForAge, INITIAL_AGE, type AgeAction, type AgeState } from "./age";
-import type { RecommendationRequest, RecommendationResponse } from "./catalog";
+import type { RankedProduct, RecommendationRequest, RecommendationResponse } from "./catalog";
 import { WS_URL } from "./config";
 import { captureFrame, cropToDataUrl, roiPixels } from "./crops";
 import { loadFaceLandmarker } from "./landmarker";
@@ -87,7 +87,7 @@ export interface ChatState {
   lastResponse: ChatResponse | null;
   symptoms: string[];
   /** Per assistant message (keyed by index in `messages`). */
-  replyMeta: Record<number, { route: string; followUps: string[]; suggestsProfessional: boolean; provider: string }>;
+  replyMeta: Record<number, { route: string; followUps: string[]; suggestsProfessional: boolean; provider: string; products?: RankedProduct[] }>;
 }
 
 export interface EngineState {
@@ -692,7 +692,7 @@ export class AnalysisEngine extends Store<EngineState> {
     this.setState({ chat: { ...this.state.chat, messages: [], lastResponse: null, error: null, replyMeta: {} } });
   }
 
-  async sendChat(text: string) {
+  async sendChat(text: string, opts: { productSearch?: boolean } = {}) {
     const content = text.trim();
     if (!content || this.state.chat.pending) return;
     const messages: ChatMessage[] = [...this.state.chat.messages, { role: "user", content }];
@@ -704,7 +704,8 @@ export class AnalysisEngine extends Store<EngineState> {
         messages: messages.slice(-20),
         user_reported_symptoms: this.state.chat.symptoms,
         observations: this.state.latestResult?.observations ?? null,
-        product_ids: this.state.chatProductIds.slice(0, 6),
+        product_ids: opts.productSearch ? [] : this.state.chatProductIds.slice(0, 6),
+        product_search: opts.productSearch ?? false,
       });
       this.telemetry.recordEvents(res.events);
       this.telemetry.recordEvents([
@@ -717,10 +718,16 @@ export class AnalysisEngine extends Store<EngineState> {
           followUps: res.reply.follow_up_questions,
           suggestsProfessional: res.reply.suggests_professional,
           provider: `${res.trace.provider}/${res.trace.model}`,
+          products: res.recommendations?.results.slice(0, 4),
         },
       };
+      if (res.recommendations) this.telemetry.recordEvents(res.recommendations.events as unknown as TelemetryEvent[]);
       this.setState({
         chat: { ...this.state.chat, messages: [...messages, { role: "assistant", content: res.reply.message }], pending: false, lastResponse: res, replyMeta },
+        // a product request in chat also updates the product list, so chat and results stay in sync
+        ...(res.recommendations
+          ? { recommendation: { pending: false, error: null, request: res.recommendations.request, response: res.recommendations, roundTripMs: performance.now() - t0, at: Date.now() } }
+          : {}),
       });
     } catch (e) {
       this.setState({ chat: { ...this.state.chat, pending: false, error: String((e as Error).message ?? e) } });

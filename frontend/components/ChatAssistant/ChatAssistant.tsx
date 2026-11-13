@@ -1,5 +1,7 @@
 "use client";
 
+import { MiniProductCard } from "@/components/Beauty/MiniProductCard";
+
 import { useEffect, useRef, useState } from "react";
 import { useEngine, useEngineState } from "@/hooks/useEngine";
 import { cx } from "@/components/ui";
@@ -70,6 +72,13 @@ export function ChatAssistant({ variant = "light", compact = false }: { variant?
                     ))}
                   </ul>
                 ) : null}
+                {meta?.products?.length ? (
+                  <div className="mt-2 space-y-1.5" aria-label="Suggested products">
+                    {meta.products.map((r) => (
+                      <MiniProductCard key={r.product.product_id} ranked={r} dark={dark} />
+                    ))}
+                  </div>
+                ) : null}
                 {meta && <div className={cx("mt-1 text-[10px]", dark ? "text-zinc-500" : "text-slate-400")}>{meta.provider}</div>}
               </div>
             </div>
@@ -97,7 +106,7 @@ export function ChatAssistant({ variant = "light", compact = false }: { variant?
           value={text}
           onChange={(e) => setText(e.target.value)}
           maxLength={2000}
-          placeholder="Type a message…"
+          placeholder="Ask anything — or e.g. “recommend a fragrance-free lip balm”"
           className={cx(
             "min-w-0 flex-1 rounded-lg border px-3",
             compact ? "py-1 text-xs" : "py-2 text-base",

@@ -60,11 +60,45 @@ def compact_product(p) -> dict:
 
 
 class HealthAssistant:
-    def __init__(self, provider, settings: Settings | None = None, catalog=None):
+    def __init__(self, provider, settings: Settings | None = None, catalog=None, recommender=None):
         self.provider = provider
         self.settings = settings or get_settings()
         self.fallback = OfflineTemplateProvider()
         self.catalog = catalog
+        self.recommender = recommender
+
+    def _product_request(self, req: ChatRequest, last_user: str, obs, steps, t_start, wall_start, events):
+        """Plain-language product request → ranked real products, answered in the chat itself."""
+        from app.recommendations.intent import parse
+
+        t0 = perf_ms()
+        accepted = sorted(evidence_keys(obs)) if obs else []
+        rreq = parse(last_user, require_ask=not req.product_search)
+        if rreq is None:
+            return None
+        rreq.session_id = req.session_id
+        steps.add("product_intent", t0, mode=rreq.mode, concern=rreq.concern, categories=rreq.categories, budget_max=rreq.budget_max,
+                  fragrance_free=rreq.fragrance_free, exclude=rreq.exclude_ingredients)
+        t1 = perf_ms()
+        rec = self.recommender.recommend(rreq)
+        steps.add("recommendations", t1, results=len(rec.results), candidates=rec.trace.candidates, validation_passed=all(c["passed"] for c in rec.trace.validation))
+        if rec.results:
+            top = rec.results[0].product
+            price = f"${top.price:.2f}" if top.price is not None else "price not listed"
+            msg = (f"Here are {len(rec.results)} options from eCosmetics that match what you asked for — the top match is "
+                   f"{(top.brand + ' ') if top.brand else ''}{top.name} ({price}). They're ranked from the retailer's listings and your "
+                   "preferences, not product testing, so check the details on the retailer page.")
+            follow = ["Want me to narrow these down — budget, fragrance-free, or a particular finish?"]
+        else:
+            msg = ("I couldn't find matching products in the local catalogue for that request. Try fewer filters, or a broader "
+                   "product type such as 'moisturiser' or 'lip balm'.")
+            follow = []
+        reply = AssistantReply(message=msg, follow_up_questions=follow, referenced_observations=[], evidence_sufficient=False, suggests_professional=False)
+        checks = validate_reply(reply, obs, False, [{"price": r.product.price} for r in rec.results])
+        resp = self._finish(req, reply, "standard", "recommendation-engine", "ranking+template", steps, obs, accepted, [], "(product request: ranked by the "
+                            "recommendation engine; see recommendations.trace)", checks, 0, {}, t_start, wall_start, events + rec.events)
+        resp.recommendations = rec.model_dump()
+        return resp
 
     def respond(self, req: ChatRequest, server_obs: StructuredObservations | None) -> ChatResponse:
         t_start, wall_start = perf_ms(), now_ms()
@@ -86,6 +120,11 @@ class HealthAssistant:
                                    evidence_sufficient=False, suggests_professional=True)
             return self._finish(req, reply, "urgent_safety", "safety-router", "reviewed-responses-v1", steps, obs, [], [], "(LLM not called: predetermined safety response)",
                                 [], 0, {}, t_start, wall_start, events)
+
+        if self.recommender is not None and tri.route == "standard" and not req.product_ids:
+            prod = self._product_request(req, last_user, obs, steps, t_start, wall_start, events)
+            if prod is not None:
+                return prod
 
         # 2-3. evidence selection + sufficiency
         t0 = perf_ms()

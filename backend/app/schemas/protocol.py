@@ -406,6 +406,7 @@ class ChatRequest(_Model):
         None, description="Fallback if the server holds no observations for this session (e.g. REST-only clients)."
     )
     product_ids: list[str] = Field(default_factory=list, max_length=6, description="Catalogue products the user selected to discuss")
+    product_search: bool = Field(False, description="Message came from a product search box: treat as a product request even without 'recommend'/'find'")
 
 
 class AssistantReply(_Model):
@@ -459,6 +460,7 @@ class ChatResponse(_Model):
     reply: AssistantReply
     trace: AgentTrace
     events: list[TelemetryEvent]
+    recommendations: Any | None = Field(None, description="RecommendationResponse when the message was a product request (see schemas/catalog.py)")
 
 
 # --------------------------------------------------------------------------- #

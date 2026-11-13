@@ -305,6 +305,8 @@ export interface ChatRequest {
   observations?: StructuredObservations | null;
   /** Catalogue product ids the user selected to discuss (max 6). */
   product_ids?: string[];
+  /** Sent from a product search box: always treated as a product request. */
+  product_search?: boolean;
 }
 export interface AssistantReply {
   message: string;
@@ -348,6 +350,8 @@ export interface ChatResponse {
   reply: AssistantReply;
   trace: AgentTrace;
   events: TelemetryEvent[];
+  /** Present when the message was a product request: a RecommendationResponse (see lib/catalog.ts). */
+  recommendations?: import("./catalog").RecommendationResponse | null;
 }
 
 // ---- sessions / longitudinal ----

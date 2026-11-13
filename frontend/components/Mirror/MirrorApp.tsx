@@ -12,20 +12,33 @@ import { SymptomInput } from "./SymptomInput";
 import { SnapshotButton } from "./SnapshotButton";
 import { CameraPicker } from "@/components/CameraView/CameraPicker";
 import { AgeOptIn } from "@/components/Age/AgeOptIn";
+import { ProductSidebar } from "@/components/Beauty/ProductSidebar";
+import { useState } from "react";
 
 function MirrorInner() {
   const engine = useEngine();
   const { camera, cameraError, socket, settings } = useEngineState();
+  const [ideas, setIdeas] = useState(false);
+  const width = ideas ? "max-w-[1440px]" : "max-w-6xl";
   return (
     <div className="min-h-full">
-      <header className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-6 py-4">
+      <header className={`mx-auto flex ${width} flex-wrap items-center justify-between gap-3 px-6 py-4`}>
         <SiteNav current="/mirror" />
         <CameraActiveIndicator />
       </header>
-      <main id="main" className="mx-auto grid max-w-6xl grid-cols-[minmax(0,1fr)] gap-6 px-4 pb-12 sm:px-6 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)]">
+      <main id="main" className={`mx-auto grid ${width} grid-cols-[minmax(0,1fr)] gap-6 px-4 pb-12 sm:px-6 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] ${ideas ? "xl:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]" : ""}`}>
         <section aria-label="Camera" className="space-y-4">
-          <div className="aspect-[4/3] overflow-hidden rounded-2xl border border-slate-200 bg-slate-200 shadow-sm">
-            <CameraView layers={MIRROR_LAYERS} mirrored={settings.mirrored} fit="cover" dark={false} />
+          <div className={ideas ? "grid grid-cols-[minmax(0,1fr)] gap-3 md:grid-cols-[minmax(0,1fr)_17rem]" : ""}>
+            <div className="aspect-[4/3] overflow-hidden rounded-2xl border border-slate-200 bg-slate-200 shadow-sm">
+              <CameraView layers={MIRROR_LAYERS} mirrored={settings.mirrored} fit="cover" dark={false} />
+            </div>
+            {ideas && (
+              <div className="relative h-[28rem] md:h-auto">
+                <div className="h-full md:absolute md:inset-0">
+                  <ProductSidebar onClose={() => setIdeas(false)} />
+                </div>
+              </div>
+            )}
           </div>
           <div className="flex flex-wrap items-center gap-3">
             {camera !== "on" ? (
@@ -38,6 +51,14 @@ function MirrorInner() {
               </button>
             )}
             <SnapshotButton />
+            <button
+              type="button"
+              onClick={() => setIdeas((v) => !v)}
+              aria-pressed={ideas}
+              className={`rounded-lg border px-4 py-2.5 text-base font-medium ${ideas ? "border-sky-700 bg-sky-50 text-sky-900" : "border-slate-300 bg-white text-slate-800 hover:bg-slate-50"}`}
+            >
+              {ideas ? "Hide product ideas" : "🛍 Product ideas"}
+            </button>
             <span className="text-sm text-slate-500">Server: {socket.status === "open" ? "connected" : socket.status}</span>
           </div>
           {cameraError && (

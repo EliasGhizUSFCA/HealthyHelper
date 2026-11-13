@@ -172,3 +172,12 @@ def test_banned_retailer_claims_are_never_quoted_or_returned(services):
     r = RecommendationService(services.catalog, services.assistant.provider).recommend(RecommendationRequest(mode="skincare", concern="dry_lips"))
     assert r.explanations is not None and all(c["passed"] for c in r.trace.validation)
     assert "clinically proven" not in " ".join(e.explanation.lower() for e in r.explanations.products)
+
+
+def test_verified_matches_listed_before_unverifiable_ones():
+    extra = parse_product(product_page(name="Shade Balm", sku="V9", category="skincare/lip-care/lip-balms-treatments", variable=True,
+                                       description="A moisturizing balm for dry, chapped lips."), B + "v9/")
+    ranked, _, meta = rank(req(budget_max=40), catalog() + [extra])
+    prices = [r.product.price for r in ranked]
+    first_none = prices.index(None)
+    assert all(p is None for p in prices[first_none:]) and "verified matches first" in meta["ordering"]
