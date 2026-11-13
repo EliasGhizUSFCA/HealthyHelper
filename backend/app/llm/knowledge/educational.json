@@ -1,0 +1,66 @@
+{
+  "$comment": "Curated educational snippets used for retrieval. Project-authored general wellness information written conservatively; NOT clinically reviewed. Replace/extend with content reviewed by qualified professionals (with citations) before real use.",
+  "review_status": "project-authored; pending clinical review",
+  "docs": [
+    {
+      "doc_id": "edu-lips-dry",
+      "title": "Dry or chapped-looking lips",
+      "features": ["lips:visible_dryness"],
+      "keywords": ["lips", "lip", "dry", "chapped", "cracked", "cold", "wind", "lick", "balm", "weather", "winter", "sun"],
+      "content": "Lips have a thin outer layer and no oil glands, so they dry out easily. Common contributors include cold or windy weather, dry indoor air, sun exposure, frequent lip licking, and some lip products. Appearance in a photo is also affected by lighting and camera quality.",
+      "self_care": "A fragrance-free lip balm or ointment, avoiding lip licking, and protecting lips from wind and sun can help.",
+      "follow_up_questions": ["Have you noticed dryness, tightness or irritation on your lips recently?", "Have you spent time in cold, windy or dry conditions?"],
+      "see_professional_if": "Cracking or soreness that persists for more than a couple of weeks, bleeding, crusting, swelling, or sores that don't heal."
+    },
+    {
+      "doc_id": "edu-eye-red",
+      "title": "Redness in the white of the eye",
+      "features": ["left_eye:visible_redness", "right_eye:visible_redness"],
+      "keywords": ["eye", "eyes", "red", "redness", "bloodshot", "irritated", "itchy", "screen", "tired", "sleep", "contact", "lenses", "allergies", "dry"],
+      "content": "The white of the eye can look red when small blood vessels widen. Everyday contributors include tiredness, long screen sessions, dry air, rubbing the eyes, contact lens wear, smoke, or pollen. Cameras, white balance and lighting can also exaggerate or hide redness.",
+      "self_care": "Screen breaks, avoiding eye rubbing, and resting the eyes may help with mild irritation.",
+      "follow_up_questions": ["Do your eyes feel irritated, itchy, gritty or watery?", "Have you had long screen sessions or less sleep than usual?"],
+      "see_professional_if": "Eye pain, changes in vision, sensitivity to light, discharge, injury, redness after a chemical splash, or redness that doesn't improve within a few days."
+    },
+    {
+      "doc_id": "edu-nose-red",
+      "title": "Redness or irritation around the outside of the nose",
+      "features": ["nose:visible_redness"],
+      "keywords": ["nose", "nostril", "red", "redness", "irritated", "blowing", "tissues", "cold", "wind", "sore"],
+      "content": "The skin around the nose can become red or irritated from frequent nose blowing, rubbing with tissues, cold or windy weather, or dry skin. Facial skin naturally varies in tone, and lighting can change how red it appears in a photo.",
+      "self_care": "Soft tissues, a gentle fragrance-free moisturiser, and avoiding rubbing can help.",
+      "follow_up_questions": ["Have you been blowing your nose more than usual?", "Is the skin around your nose sore or tender?"],
+      "see_professional_if": "Redness that spreads, becomes painful, swollen or warm, crusts, or persists for more than a couple of weeks."
+    },
+    {
+      "doc_id": "edu-skin-dry",
+      "title": "Dry or flaky-looking facial skin",
+      "features": ["skin_forehead:visible_flaking", "skin_left_cheek:visible_flaking", "skin_right_cheek:visible_flaking"],
+      "keywords": ["skin", "dry", "flaky", "flaking", "peeling", "tight", "itchy", "moisturiser", "moisturizer", "cleanser", "winter", "shower"],
+      "content": "Facial skin can look dry or flaky with low humidity, cold weather, hot water, harsh cleansers, or some skincare products. Texture is hard to judge from a webcam image; resolution, compression, and lighting strongly affect what is visible.",
+      "self_care": "A gentle cleanser, lukewarm water, and a fragrance-free moisturiser applied after washing can help.",
+      "follow_up_questions": ["Does your skin feel tight, itchy or rough?", "Have you changed skincare products or been in dry air recently?"],
+      "see_professional_if": "Itching that disturbs sleep, cracked or bleeding skin, signs of infection, or dryness that doesn't improve with gentle care."
+    },
+    {
+      "doc_id": "edu-camera-limits",
+      "title": "What a camera can and cannot tell you",
+      "features": [],
+      "keywords": ["dehydrated", "dehydration", "sick", "ill", "healthy", "diagnose", "disease", "infection", "accurate", "trust", "camera", "lighting", "why"],
+      "content": "A webcam image can show some surface appearance, such as how dry lips look under the current lighting. It cannot establish dehydration, infection, illness, nutrition, or any internal condition. Lighting, white balance, camera quality, makeup and skin tone all change how features appear. The observations here come from experimental models and are not medical assessments.",
+      "self_care": "",
+      "follow_up_questions": ["Would you like tips on getting a clearer image (even lighting, facing the camera)?"],
+      "see_professional_if": "You are worried about your health or symptoms — a healthcare professional can examine you and ask the right questions."
+    },
+    {
+      "doc_id": "edu-hydration",
+      "title": "Hydration basics",
+      "features": [],
+      "keywords": ["water", "drink", "hydration", "hydrated", "dehydrated", "thirsty"],
+      "content": "Dry-looking lips or skin are not a reliable sign of dehydration, and dehydration cannot be judged from facial appearance. General guidance is to drink fluids regularly, more in hot weather or during exercise. Signs that warrant professional advice include dizziness, very dark urine, confusion, or not passing urine.",
+      "self_care": "",
+      "follow_up_questions": [],
+      "see_professional_if": "Dizziness, confusion, fainting, very little or very dark urine, or you are concerned about fluid intake."
+    }
+  ]
+}

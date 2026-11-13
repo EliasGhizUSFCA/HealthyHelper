@@ -1,0 +1,14 @@
+# Serving (tested with Python 3.13). torch/torchvision: install the CPU or CUDA wheel for your platform,
+# e.g. pip install torch==2.15.0 torchvision==0.29.2 --index-url https://download.pytorch.org/whl/cpu
+fastapi==0.162.5
+uvicorn[standard]==0.54.0
+websockets==17.4
+pydantic==2.13.5
+numpy==2.5.3
+opencv-python-headless==5.0.0.93
+torch==2.15.0
+torchvision==0.29.2
+onnxruntime==1.29.0
+anthropic==2.8.0
+SQLAlchemy==2.1.8
+psycopg[binary]==3.3.9

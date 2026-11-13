@@ -1,0 +1,42 @@
+# Backend API Reference
+
+Base URL: `NEXT_PUBLIC_API_URL` (default `http://localhost:8000`). All types are defined in
+`backend/app/schemas/protocol.py` and mirrored in `frontend/lib/protocol.ts`.
+
+## REST
+
+| Method | Path | Body | Response | Notes |
+|---|---|---|---|---|
+| GET | `/api/health` | – | `{status, protocol_version, models_loaded, llm_provider}` | Liveness/readiness |
+| GET | `/api/models` | – | `ModelInfo[]` | Cached; reflects `models/` on disk at startup or `/api/models/reload` |
+| POST | `/api/models/reload` | – | `ModelInfo[]` | Rescan model registry |
+| POST | `/api/sessions` | – | `SessionCreated` | Ephemeral in-memory session (no images stored) |
+| DELETE | `/api/sessions/{session_id}` | – | `DeletionReport` | Drops in-memory observation history for the session |
+| POST | `/api/inference/image` | `ImageInferenceRequest` | `InferenceResult` | Single image + landmarks; server crops regions. `consent_upload` must be true |
+| POST | `/api/explain` | `ClientExplain` (without `type` requirement) | `Explanation` | Grad-CAM on one crop |
+| POST | `/api/chat` | `ChatRequest` | `ChatResponse` | Grounded assistant |
+| POST | `/api/history/snapshots` | `SnapshotCreate` | `SnapshotSummary` | **Stores aligned region crops.** Requires `consent_store_images: true` |
+| GET | `/api/history/{history_id}/snapshots` | – | `SnapshotSummary[]` | Oldest first |
+| GET | `/api/history/{history_id}/compare?before=ID&after=ID` | – | `ComparisonResult` | |
+| DELETE | `/api/history/{history_id}` | – | `DeletionReport` | Deletes every snapshot, image file and DB row for that history |
+| GET | `/api/privacy` | – | retention policy JSON | |
+
+## WebSocket `/ws/inference`
+
+1. Client connects and sends `ClientHello`. `consent_upload_crops` must be `true`; otherwise the
+   server replies `ServerError{code:"consent_required"}` and drops every frame with
+   `FrameDropped{reason:"no_consent"}`.
+2. Server replies `ServerHelloAck` (session id, model list, queue size).
+3. Client sends `ClientFrame` messages at its **inference sampling rate** (not the camera rate),
+   carrying small JPEG region crops plus the client-side telemetry events for that frame.
+4. Server responds with `InferenceResult` per processed frame, or `FrameDropped` when a newer
+   frame superseded a queued one (latest-frame-wins bounded queue, size 1).
+5. `ClientExplain` → `Explanation` (computed off the hot path in a worker thread).
+6. `ClientPing` → `ServerPong`. Server also pushes `ServerMetrics` every ~2 s.
+
+Flow control: the client keeps at most **one** frame in flight (it waits for a result or
+`frame_dropped` before sending another, with a timeout). The server additionally holds at most
+one pending frame per connection, so stale work never accumulates.
+
+Reconnection: the client reconnects with exponential backoff (0.5 s → 8 s, jittered) and resends
+`ClientHello` with its previous `session_id` so aggregated observations survive.

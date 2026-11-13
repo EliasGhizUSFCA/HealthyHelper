@@ -1,0 +1,34 @@
+# Local full stack: backend + PostgreSQL (+ optional MLflow UI with --profile mlops).
+# Frontend runs with `npm run dev` (or on Vercel).
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: docker/backend.Dockerfile
+      args:
+        DEMO_MODELS: "${DEMO_MODELS:-0}"
+    ports: ["8000:8000"]
+    environment:
+      DATABASE_URL: postgresql+psycopg://mirror:mirror@db:5432/mirror
+      CORS_ORIGINS: "${CORS_ORIGINS:-http://localhost:3000}"
+      ANTHROPIC_API_KEY: "${ANTHROPIC_API_KEY:-}"
+      LLM_PROVIDER: "${LLM_PROVIDER:-auto}"
+    volumes:
+      - ./models:/srv/models:ro
+      - mirror-data:/data
+    depends_on:
+      db: { condition: service_healthy }
+  db:
+    image: postgres:17-alpine
+    environment: { POSTGRES_USER: mirror, POSTGRES_PASSWORD: mirror, POSTGRES_DB: mirror }
+    volumes: [pg-data:/var/lib/postgresql/data]
+    healthcheck: { test: ["CMD-SHELL", "pg_isready -U mirror"], interval: 5s, retries: 10 }
+  mlflow:
+    profiles: ["mlops"]
+    image: ghcr.io/mlflow/mlflow:v3.18.0
+    command: mlflow ui --host 0.0.0.0 --backend-store-uri sqlite:////runs/mlflow.db
+    ports: ["5000:5000"]
+    volumes: [./runs:/runs]
+volumes:
+  mirror-data:
+  pg-data:

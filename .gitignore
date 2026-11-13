@@ -1,0 +1,26 @@
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+*.egg-info/
+# Data & artifacts (never commit images or weights)
+data/
+runs/
+mlruns/
+models/*/
+!models/README.md
+*.pt
+*.onnx
+# Node
+node_modules/
+.next/
+out/
+frontend/public/mediapipe/
+frontend/public/models/
+*.tsbuildinfo
+# Env
+.env
+.env.local
+# OS
+.DS_Store
