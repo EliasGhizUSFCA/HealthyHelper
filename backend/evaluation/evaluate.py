@@ -66,7 +66,7 @@ def evaluate_samples(lm, samples, threshold: float | None = None, slice_keys: li
     y = np.array([classes.index(s.label) for s in samples])
     probs = predict(lm, images)
     report: dict = {"overall": summarize(probs, y, classes, thr)}
-    keys = slice_keys if slice_keys is not None else sorted({k for s in samples for k in s.meta if k not in {"severity", "source"}})
+    keys = slice_keys if slice_keys is not None else sorted({k for s in samples for k in s.meta if k not in {"severity", "source", "session_id", "n_annotators"}})
     slices: dict[str, dict] = {}
     for k in keys:
         groups: dict[str, list[int]] = defaultdict(list)
@@ -128,7 +128,7 @@ def main() -> None:
     seed = a.seed if a.seed is not None else int(lm.card.training_summary.get("split_seed", 42))
     samples = read_manifest(a.manifest)
     if a.split != "all":
-        samples = grouped_split(samples, seed=seed)[a.split]
+        samples = grouped_split(samples, seed=seed, group_by=lm.card.dataset.get("group_by", "subject_id"))[a.split]
     rep = evaluate_samples(lm, samples)
     out = a.out or a.model_dir / f"eval_{a.split}.json"
     out.write_text(json.dumps(rep, indent=2))

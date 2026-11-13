@@ -5,58 +5,276 @@
     {
       "doc_id": "edu-lips-dry",
       "title": "Dry or chapped-looking lips",
-      "features": ["lips:visible_dryness"],
-      "keywords": ["lips", "lip", "dry", "chapped", "cracked", "cold", "wind", "lick", "balm", "weather", "winter", "sun"],
+      "features": [
+        "lips:visible_dryness"
+      ],
+      "keywords": [
+        "lips",
+        "lip",
+        "dry",
+        "chapped",
+        "cracked",
+        "cold",
+        "wind",
+        "lick",
+        "balm",
+        "weather",
+        "winter",
+        "sun"
+      ],
       "content": "Lips have a thin outer layer and no oil glands, so they dry out easily. Common contributors include cold or windy weather, dry indoor air, sun exposure, frequent lip licking, and some lip products. Appearance in a photo is also affected by lighting and camera quality.",
       "self_care": "A fragrance-free lip balm or ointment, avoiding lip licking, and protecting lips from wind and sun can help.",
-      "follow_up_questions": ["Have you noticed dryness, tightness or irritation on your lips recently?", "Have you spent time in cold, windy or dry conditions?"],
+      "follow_up_questions": [
+        "Have you noticed dryness, tightness or irritation on your lips recently?",
+        "Have you spent time in cold, windy or dry conditions?"
+      ],
       "see_professional_if": "Cracking or soreness that persists for more than a couple of weeks, bleeding, crusting, swelling, or sores that don't heal."
     },
     {
       "doc_id": "edu-eye-red",
       "title": "Redness in the white of the eye",
-      "features": ["left_eye:visible_redness", "right_eye:visible_redness"],
-      "keywords": ["eye", "eyes", "red", "redness", "bloodshot", "irritated", "itchy", "screen", "tired", "sleep", "contact", "lenses", "allergies", "dry"],
+      "features": [
+        "left_eye:visible_redness",
+        "right_eye:visible_redness"
+      ],
+      "keywords": [
+        "eye",
+        "eyes",
+        "red",
+        "redness",
+        "bloodshot",
+        "irritated",
+        "itchy",
+        "screen",
+        "tired",
+        "sleep",
+        "contact",
+        "lenses",
+        "allergies",
+        "dry"
+      ],
       "content": "The white of the eye can look red when small blood vessels widen. Everyday contributors include tiredness, long screen sessions, dry air, rubbing the eyes, contact lens wear, smoke, or pollen. Cameras, white balance and lighting can also exaggerate or hide redness.",
       "self_care": "Screen breaks, avoiding eye rubbing, and resting the eyes may help with mild irritation.",
-      "follow_up_questions": ["Do your eyes feel irritated, itchy, gritty or watery?", "Have you had long screen sessions or less sleep than usual?"],
+      "follow_up_questions": [
+        "Do your eyes feel irritated, itchy, gritty or watery?",
+        "Have you had long screen sessions or less sleep than usual?"
+      ],
       "see_professional_if": "Eye pain, changes in vision, sensitivity to light, discharge, injury, redness after a chemical splash, or redness that doesn't improve within a few days."
     },
     {
       "doc_id": "edu-nose-red",
       "title": "Redness or irritation around the outside of the nose",
-      "features": ["nose:visible_redness"],
-      "keywords": ["nose", "nostril", "red", "redness", "irritated", "blowing", "tissues", "cold", "wind", "sore"],
+      "features": [
+        "nose:visible_redness"
+      ],
+      "keywords": [
+        "nose",
+        "nostril",
+        "red",
+        "redness",
+        "irritated",
+        "blowing",
+        "tissues",
+        "cold",
+        "wind",
+        "sore"
+      ],
       "content": "The skin around the nose can become red or irritated from frequent nose blowing, rubbing with tissues, cold or windy weather, or dry skin. Facial skin naturally varies in tone, and lighting can change how red it appears in a photo.",
       "self_care": "Soft tissues, a gentle fragrance-free moisturiser, and avoiding rubbing can help.",
-      "follow_up_questions": ["Have you been blowing your nose more than usual?", "Is the skin around your nose sore or tender?"],
+      "follow_up_questions": [
+        "Have you been blowing your nose more than usual?",
+        "Is the skin around your nose sore or tender?"
+      ],
       "see_professional_if": "Redness that spreads, becomes painful, swollen or warm, crusts, or persists for more than a couple of weeks."
     },
     {
       "doc_id": "edu-skin-dry",
       "title": "Dry or flaky-looking facial skin",
-      "features": ["skin_forehead:visible_flaking", "skin_left_cheek:visible_flaking", "skin_right_cheek:visible_flaking"],
-      "keywords": ["skin", "dry", "flaky", "flaking", "peeling", "tight", "itchy", "moisturiser", "moisturizer", "cleanser", "winter", "shower"],
+      "features": [
+        "skin_forehead:visible_flaking",
+        "skin_left_cheek:visible_flaking",
+        "skin_right_cheek:visible_flaking",
+        "skin_chin:visible_flaking"
+      ],
+      "keywords": [
+        "skin",
+        "dry",
+        "flaky",
+        "flaking",
+        "peeling",
+        "tight",
+        "itchy",
+        "moisturiser",
+        "moisturizer",
+        "cleanser",
+        "winter",
+        "shower"
+      ],
       "content": "Facial skin can look dry or flaky with low humidity, cold weather, hot water, harsh cleansers, or some skincare products. Texture is hard to judge from a webcam image; resolution, compression, and lighting strongly affect what is visible.",
       "self_care": "A gentle cleanser, lukewarm water, and a fragrance-free moisturiser applied after washing can help.",
-      "follow_up_questions": ["Does your skin feel tight, itchy or rough?", "Have you changed skincare products or been in dry air recently?"],
+      "follow_up_questions": [
+        "Does your skin feel tight, itchy or rough?",
+        "Have you changed skincare products or been in dry air recently?"
+      ],
       "see_professional_if": "Itching that disturbs sleep, cracked or bleeding skin, signs of infection, or dryness that doesn't improve with gentle care."
+    },
+    {
+      "doc_id": "edu-skin-blemishes",
+      "title": "Spots or blemishes on facial skin",
+      "features": [
+        "skin_forehead:visible_blemishes",
+        "skin_left_cheek:visible_blemishes",
+        "skin_right_cheek:visible_blemishes",
+        "skin_chin:visible_blemishes"
+      ],
+      "keywords": [
+        "acne",
+        "spots",
+        "spot",
+        "pimples",
+        "pimple",
+        "blemishes",
+        "breakout",
+        "breakouts",
+        "bumps",
+        "zits",
+        "skin",
+        "oily",
+        "pores"
+      ],
+      "content": "Small spots or bumps on the face are very common, especially on the forehead, chin and cheeks. Everyday contributors include clogged pores, oil, sweat, friction (masks, phone screens, hands touching the face), some cosmetics, and hormonal changes. A camera can show that spots are visible, but it cannot tell what kind of spots they are.",
+      "self_care": "Gentle twice-daily cleansing, non-comedogenic (\"won't clog pores\") products, and avoiding picking or squeezing spots can help.",
+      "follow_up_questions": [
+        "Have you noticed new spots recently, or is this usual for you?",
+        "Are any of them painful, deep or slow to heal?"
+      ],
+      "see_professional_if": "Spots are painful, deep or leaving marks or scars, spread quickly, appear with fever, or are affecting how you feel day to day \u2014 a pharmacist, doctor or dermatologist can advise on options."
+    },
+    {
+      "doc_id": "edu-skin-redness",
+      "title": "Redness or irritated-looking facial skin",
+      "features": [
+        "skin_forehead:visible_redness",
+        "skin_left_cheek:visible_redness",
+        "skin_right_cheek:visible_redness",
+        "skin_chin:visible_redness"
+      ],
+      "keywords": [
+        "red",
+        "redness",
+        "irritated",
+        "irritation",
+        "rash",
+        "flushed",
+        "burning",
+        "stinging",
+        "sensitive",
+        "itchy",
+        "new",
+        "product",
+        "sunburn",
+        "shaving"
+      ],
+      "content": "Facial skin can look red or irritated after sun or wind exposure, hot showers, exercise, shaving, rubbing, or a new skincare or cosmetic product. Natural skin tone, warm lighting and camera white balance can also make skin look redder or less red than it is.",
+      "self_care": "Pausing any new products, washing with lukewarm water and a gentle cleanser, using a fragrance-free moisturiser, and sun protection can help mild irritation settle.",
+      "follow_up_questions": [
+        "Does the area feel itchy, burning or tender?",
+        "Have you started any new skincare, cosmetic or laundry products recently?"
+      ],
+      "see_professional_if": "Redness spreads quickly, is hot, swollen or very painful, blisters, comes with fever or swelling of the face or lips, or keeps coming back."
+    },
+    {
+      "doc_id": "edu-skin-shine",
+      "title": "Shiny or oily-looking skin",
+      "features": [
+        "skin_forehead:visible_shine",
+        "skin_left_cheek:visible_shine",
+        "skin_right_cheek:visible_shine",
+        "skin_chin:visible_shine"
+      ],
+      "keywords": [
+        "oily",
+        "shiny",
+        "shine",
+        "greasy",
+        "grease",
+        "sebum",
+        "pores",
+        "tzone",
+        "t-zone"
+      ],
+      "content": "Skin naturally produces oil (sebum), often more on the forehead, nose and chin. Shine in a photo depends heavily on lighting direction \u2014 a single bright light makes almost any skin look shiny.",
+      "self_care": "A gentle cleanser, an oil-free moisturiser, and blotting papers during the day can help if shine bothers you. Over-washing can make skin feel irritated.",
+      "follow_up_questions": [
+        "Does your skin usually feel oily, or only at certain times of day?"
+      ],
+      "see_professional_if": "Oiliness comes with painful spots, irritation, or changes that worry you."
+    },
+    {
+      "doc_id": "edu-undereye",
+      "title": "Darker-looking skin under the eyes",
+      "features": [
+        "left_undereye:visible_darkness",
+        "right_undereye:visible_darkness"
+      ],
+      "keywords": [
+        "dark",
+        "circles",
+        "under",
+        "undereye",
+        "eyes",
+        "bags",
+        "puffy",
+        "tired",
+        "sleep",
+        "shadows"
+      ],
+      "content": "The skin under the eyes is thin, so blood vessels and natural pigment show through more. Darker under-eye areas are often due to genetics, natural skin tone, shadows from facial structure, rubbing the eyes, or allergies, and overhead lighting makes shadows look darker. Appearance alone doesn't show whether someone is tired or unwell.",
+      "self_care": "Sun protection, not rubbing the eyes, and good sleep habits are generally helpful; facing a soft, front-on light gives a fairer picture in photos.",
+      "follow_up_questions": [
+        "Is this usual for you, or a recent change?",
+        "Do your eyes feel itchy or puffy?"
+      ],
+      "see_professional_if": "Swelling or discolouration appears suddenly, affects only one side, is painful, or comes with changes in vision."
     },
     {
       "doc_id": "edu-camera-limits",
       "title": "What a camera can and cannot tell you",
       "features": [],
-      "keywords": ["dehydrated", "dehydration", "sick", "ill", "healthy", "diagnose", "disease", "infection", "accurate", "trust", "camera", "lighting", "why"],
+      "keywords": [
+        "dehydrated",
+        "dehydration",
+        "sick",
+        "ill",
+        "healthy",
+        "diagnose",
+        "disease",
+        "infection",
+        "accurate",
+        "trust",
+        "camera",
+        "lighting",
+        "why"
+      ],
       "content": "A webcam image can show some surface appearance, such as how dry lips look under the current lighting. It cannot establish dehydration, infection, illness, nutrition, or any internal condition. Lighting, white balance, camera quality, makeup and skin tone all change how features appear. The observations here come from experimental models and are not medical assessments.",
       "self_care": "",
-      "follow_up_questions": ["Would you like tips on getting a clearer image (even lighting, facing the camera)?"],
-      "see_professional_if": "You are worried about your health or symptoms — a healthcare professional can examine you and ask the right questions."
+      "follow_up_questions": [
+        "Would you like tips on getting a clearer image (even lighting, facing the camera)?"
+      ],
+      "see_professional_if": "You are worried about your health or symptoms \u2014 a healthcare professional can examine you and ask the right questions."
     },
     {
       "doc_id": "edu-hydration",
       "title": "Hydration basics",
       "features": [],
-      "keywords": ["water", "drink", "hydration", "hydrated", "dehydrated", "thirsty"],
+      "keywords": [
+        "water",
+        "drink",
+        "hydration",
+        "hydrated",
+        "dehydrated",
+        "thirsty"
+      ],
       "content": "Dry-looking lips or skin are not a reliable sign of dehydration, and dehydration cannot be judged from facial appearance. General guidance is to drink fluids regularly, more in hot weather or during exercise. Signs that warrant professional advice include dizziness, very dark urine, confusion, or not passing urine.",
       "self_care": "",
       "follow_up_questions": [],

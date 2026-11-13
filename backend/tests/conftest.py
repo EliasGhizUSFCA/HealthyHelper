@@ -23,6 +23,7 @@ def synthetic_landmarks(cx: float = 0.5, cy: float = 0.5, scale: float = 0.3, an
         "lips": (0.0, 0.3, 0.16, 0.06), "left_eye": (0.18, -0.12, 0.08, 0.03), "right_eye": (-0.18, -0.12, 0.08, 0.03),
         "nose": (0.0, 0.08, 0.07, 0.1), "skin_forehead": (0.0, -0.38, 0.12, 0.06),
         "skin_left_cheek": (0.24, 0.12, 0.06, 0.06), "skin_right_cheek": (-0.24, 0.12, 0.06, 0.06),
+        "left_undereye": (0.18, -0.03, 0.07, 0.03), "right_undereye": (-0.18, -0.03, 0.07, 0.03), "skin_chin": (0.0, 0.42, 0.07, 0.04),
     }
     for name, spec in region_specs().items():
         ox, oy, sx, sy = layout[name]

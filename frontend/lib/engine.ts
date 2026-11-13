@@ -567,6 +567,35 @@ export class AnalysisEngine extends Store<EngineState> {
     return { image: c.toDataURL("image/jpeg", 0.92), landmarks: lm.map((p) => [p.x, p.y, p.z]) };
   }
 
+  // ------------------------------------------------------------------ dataset collection
+  /**
+   * Crop every valid region from ONE current camera frame at up to `maxSize` px for the consented
+   * training-data collector. Returns a reason instead of crops when the frame is not usable.
+   */
+  captureRegionCrops(maxSize = 256): { crops: { region: RegionName; dataUrl: string }[]; quality: ImageQuality } | { error: string } {
+    const v = this.video;
+    if (!v || this.state.camera !== "on" || !this.landmarker) return { error: "Start the camera first." };
+    const c = captureFrame(v);
+    const d = this.detect(c);
+    const faces = d?.result.faceLandmarks?.length ?? 0;
+    if (faces !== 1) return { error: faces === 0 ? "No face detected — face the camera." : "More than one face detected — only one person per capture." };
+    const lm = d!.result.faceLandmarks[0] as Point2[];
+    const matrix = d!.result.facialTransformationMatrixes?.[0]?.data;
+    const pose = matrix ? poseFromMatrix(matrix) : poseFromLandmarks(lm);
+    const fb = faceBox(lm, c.width, c.height);
+    const px = roiPixels(c, fb, 128);
+    const m = measureImage(px.data, px.w, px.h);
+    const quality = assessQuality({
+      brightness: m.brightness, contrast: m.contrast, sharpness: m.sharpness,
+      face_area_fraction: (fb.w * fb.h) / (c.width * c.height), yaw_deg: pose.yaw, pitch_deg: pose.pitch, face_count: faces,
+    });
+    if (quality.status === "unusable") return { error: `Image not usable (${quality.issues.join(", ")}). Improve lighting or move closer.` };
+    const crops = computeAllRegions(lm, c.width, c.height)
+      .filter((b) => b.valid)
+      .map((b) => ({ region: b.region, dataUrl: cropToDataUrl(c, b.px, maxSize, 0.95) }));
+    return { crops, quality };
+  }
+
   // ------------------------------------------------------------------ chat
   setSymptoms(symptoms: string[]) {
     this.setState({ chat: { ...this.state.chat, symptoms } });

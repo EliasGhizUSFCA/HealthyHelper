@@ -13,7 +13,7 @@
 | backbone | resnet18 (ImageNet-pretrained: True) |
 | input | 128×128 RGB, ImageNet normalisation |
 | calibration | temperature scaling, T = 0.920 (fitted on validation split) |
-| data | synthetic; train/val/test = 840/160/200 images, split by subject (seed 42) |
+| data | synthetic; train/val/test = 840/160/200 images, grouped by subject_id (seed 42); contributors: n/a; label agreement (mean κ): n/a |
 | training | 6 epochs (best 3), 112.6 s on cpu, torch 2.15.0+cpu, tracker mlflow run `1311f6b0e9504a4d9381bf48691f1b74` |
 
 ## Intended use

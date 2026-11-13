@@ -23,7 +23,15 @@ or partially · ⛔ not done (see "Open items").
 * ✅ Manifest loader, grouped split + leakage check, augmentation, transfer learning, early stopping,
   checkpoints, temperature scaling, versioned artifacts, registry, batched inference.
 * ✅ Four DEMO models trained (synthetic data); real weights serve live predictions.
-* ⛔ No model trained on real data — no suitable licensed, consented, labelled dataset (docs/datasets.md).
+* ✅ Real-data path: consented collection (`/collect`), blind multi-annotator labelling with Cohen's κ
+  (`/label`), manifest export, `make train-real` → `experimental` tier; `validated` tier behind an enforced
+  gate. Verified end-to-end in headless Chromium + `make train-real`, using stand-in crops (the sandbox has
+  no face), which were then deleted via the withdrawal endpoint.
+* ✅ Eight features: lip dryness, eye redness, nasal redness, skin flaking, spots/blemishes, skin redness,
+  skin shine, under-eye darkness; ten regions (added chin and both under-eyes).
+* ⛔ No model has been trained on real faces yet — that needs real contributors and labels (docs/datasets.md).
+* ⛔ New regions (chin, under-eyes) use landmark indices chosen from the MediaPipe topology but not yet
+  checked visually on a real face; check the boxes in Model Lab (P1, "Under-eye" and "Skin" layers).
 
 ## Phase 4 — Explainability, confidence visualisation, experiment tracking
 * ✅ Grad-CAM (tested), async off the hot path; MLflow tracking (SQLite) with JSON fallback.

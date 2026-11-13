@@ -54,6 +54,48 @@ class TrainConfig:
     tracker: str = "auto"
     max_train_batches: int | None = None  # for smoke tests
     version: str | None = None
+    group_by: str = "subject_id"  # or "session_id" when there are too few people (forces tier experimental)
+    class_weighted: bool = False  # weight the loss by inverse class frequency (useful for imbalanced real data)
+
+
+# Validation gate: a model may only be marked "validated" if its held-out test split is big and diverse enough
+# and the labels are reliable. These are project rules, not clinical standards.
+GATE = {"min_test_subjects": 15, "min_test_images": 100, "min_test_per_class": 30, "min_mean_kappa": 0.6}
+
+
+def check_validation_gate(cfg: TrainConfig, splits: dict, classes: list[str], dataset_card: dict | None) -> list[str]:
+    test = splits["test"]
+    problems = []
+    if cfg.group_by != "subject_id":
+        problems.append("split must be grouped by subject_id (not session) to estimate performance on new people")
+    if len({s.subject_id for s in test}) < GATE["min_test_subjects"]:
+        problems.append(f"test split has {len({s.subject_id for s in test})} subjects < {GATE['min_test_subjects']}")
+    if len(test) < GATE["min_test_images"]:
+        problems.append(f"test split has {len(test)} images < {GATE['min_test_images']}")
+    for c in classes:
+        n = sum(1 for s in test if s.label == c)
+        if n < GATE["min_test_per_class"]:
+            problems.append(f"test split has {n} '{c}' images < {GATE['min_test_per_class']}")
+    kappa = (dataset_card or {}).get("mean_kappa")
+    if kappa is None or kappa < GATE["min_mean_kappa"]:
+        problems.append(f"inter-annotator agreement (mean Cohen's kappa) is {kappa} — need >= {GATE['min_mean_kappa']} from >= 2 annotators")
+    if any(s.meta.get("source") == "synthetic" for s in test):
+        problems.append("synthetic data cannot produce a validated model")
+    return problems
+
+
+def _limitations(cfg: TrainConfig, n_subjects: int) -> list[str]:
+    if cfg.tier == "demo":
+        return ["Trained ONLY on procedurally generated synthetic images; predictions on real faces are meaningless.",
+                "Synthetic skin-tone groups do not establish fairness on real people."]
+    out = ["Not clinically validated.", "Performance depends on camera, lighting and pose; see eval report slices."]
+    if cfg.tier == "experimental":
+        out.insert(0, f"EXPERIMENTAL: trained on real images from {n_subjects} contributor(s); did not pass (or was not checked against) the validation gate.")
+    if cfg.group_by != "subject_id":
+        out.insert(1, "Split grouped by capture session, not by person: test metrics overestimate performance on new people.")
+    if n_subjects < 30:
+        out.append("Very few contributors: results will not generalise across skin tones, ages, cameras or lighting.")
+    return out
 
 
 def set_seed(seed: int) -> None:
@@ -82,11 +124,32 @@ def run(cfg: TrainConfig) -> Path:
     classes = list(entry.classes)
     pre = PreprocessConfig(cfg.input_size, IMAGENET_MEAN, IMAGENET_STD)
     samples = read_manifest(Path(cfg.manifest))
-    splits = grouped_split(samples, cfg.val_frac, cfg.test_frac, cfg.split_seed)
-    assert_no_leakage(splits)
+    is_synthetic = all(s.meta.get("source") == "synthetic" for s in samples)
+    if cfg.tier == "demo" and not is_synthetic:
+        raise ValueError("tier 'demo' is reserved for synthetic data; use --tier experimental for real images")
+    if cfg.tier in ("experimental", "validated") and is_synthetic:
+        raise ValueError("synthetic data can only train a 'demo' model")
+    for c in classes:
+        if sum(1 for s in samples if s.label == c) < 10:
+            raise ValueError(f"need at least 10 labelled '{c}' images (have {sum(1 for s in samples if s.label == c)})")
+    n_subjects = len({s.subject_id for s in samples})
+    if cfg.group_by == "subject_id" and n_subjects < 3:
+        raise ValueError(f"only {n_subjects} subject(s): a subject-grouped split is impossible. Collect images from more people, "
+                         "or pass --group-by session_id (the model will then be tier 'experimental' and its test score will "
+                         "OVERESTIMATE performance on new people).")
+    splits = grouped_split(samples, cfg.val_frac, cfg.test_frac, cfg.split_seed, cfg.group_by)
+    assert_no_leakage(splits, cfg.group_by)
     for k, v in splits.items():
         if not v:
-            raise ValueError(f"empty {k} split — need more subjects")
+            raise ValueError(f"empty {k} split — need more {'subjects' if cfg.group_by == 'subject_id' else 'capture sessions'}")
+    dataset_card = None
+    card_path = Path(cfg.manifest).with_suffix(".dataset_card.json")
+    if card_path.exists():
+        dataset_card = json.loads(card_path.read_text())
+    if cfg.tier == "validated":
+        problems = check_validation_gate(cfg, splits, classes, dataset_card)
+        if problems:
+            raise ValueError("validation gate failed — train with --tier experimental instead:\n  - " + "\n  - ".join(problems))
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
     train_ds = RegionDataset(splits["train"], classes, pre, Augmenter(seed=cfg.seed))
@@ -98,9 +161,13 @@ def run(cfg: TrainConfig) -> Path:
     model = build_model(cfg.backbone, len(classes), pretrained=cfg.pretrained).to(device)
     opt = torch.optim.AdamW(model.parameters(), lr=cfg.lr, weight_decay=cfg.weight_decay)
     sched = torch.optim.lr_scheduler.CosineAnnealingLR(opt, T_max=max(1, cfg.epochs))
-    loss_fn = nn.CrossEntropyLoss(label_smoothing=cfg.label_smoothing)
+    weight = None
+    if cfg.class_weighted:
+        counts = np.array([sum(1 for s in splits["train"] if s.label == c) for c in classes], dtype=np.float64)
+        weight = torch.tensor(counts.sum() / (len(classes) * np.maximum(counts, 1)), dtype=torch.float32, device=device)
+    loss_fn = nn.CrossEntropyLoss(weight=weight, label_smoothing=cfg.label_smoothing)
 
-    version = cfg.version or f"{'0.1.0' if cfg.tier == 'demo' else '1.0.0'}-{cfg.tier}.{time.strftime('%Y%m%d%H%M%S')}"
+    version = cfg.version or f"{ {'demo': '0.1.0', 'experimental': '0.5.0', 'validated': '1.0.0'}[cfg.tier] }-{cfg.tier}.{time.strftime('%Y%m%d%H%M%S')}"
     out = Path(cfg.out_dir) / cfg.model_id / version
     out.mkdir(parents=True, exist_ok=True)
     tracker = make_tracker(cfg.tracker, Path(cfg.runs_dir), f"health-mirror-{cfg.model_id}", version)
@@ -162,16 +229,17 @@ def run(cfg: TrainConfig) -> Path:
         created_at=time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
         training_summary={
             "best_epoch": best_epoch, "epochs_run": len(history), "best_val_loss": best_loss, "train_seconds": round(time.time() - t_start, 1),
-            "split_seed": cfg.split_seed, "seed": cfg.seed, "pretrained_imagenet": cfg.pretrained, "device": device,
+            "split_seed": cfg.split_seed, "seed": cfg.seed, "pretrained_imagenet": cfg.pretrained and cfg.backbone != "small_cnn", "device": device,
             "n_train": len(train_ds), "n_val": len(val_ds), "n_test": len(splits["test"]), "tracker": tracker.backend, "run_id": tracker.run_id,
             "torch": torch.__version__, "python": platform.python_version(), "history": history,
         },
         intended_use="Educational demonstration of a region-classifier pipeline. Not for health assessment." if cfg.tier == "demo"
         else "Wellness-education visual observation of a single facial region. Not a diagnostic device.",
-        limitations=(["Trained ONLY on procedurally generated synthetic images; predictions on real faces are meaningless.",
-                      "Synthetic skin-tone groups do not establish fairness on real people."] if cfg.tier == "demo" else
-                     ["Not clinically validated.", "Performance depends on camera, lighting and pose; see eval report slices."]),
-        dataset={"manifest": str(cfg.manifest), "source": sorted({s.meta.get("source", "unknown") for s in samples})},
+        limitations=_limitations(cfg, n_subjects),
+        dataset={"manifest": str(cfg.manifest), "source": sorted({s.meta.get("source", "unknown") for s in samples}),
+                 "subjects": n_subjects, "group_by": cfg.group_by, "class_weighted": cfg.class_weighted,
+                 "label_counts": {c: sum(1 for s in samples if s.label == c) for c in classes},
+                 "mean_kappa": (dataset_card or {}).get("mean_kappa"), "annotators": len((dataset_card or {}).get("annotators", []))},
     )
     (out / "model_card.json").write_text(card.model_dump_json(indent=2))
 
@@ -184,15 +252,30 @@ def run(cfg: TrainConfig) -> Path:
         "split": "test", "n": o["n"], "accuracy": o["accuracy"], "macro_f1": o["macro_f1"], "ece": o["calibration"]["ece"],
         "per_class": {c: {k: round(v, 4) for k, v in m.items()} for c, m in o["per_class"].items()},
         "selective": o["selective"], "latency": report.get("latency"),
-        "data_caveat": "synthetic test data — says nothing about real-world performance" if cfg.tier == "demo" else "",
+        "data_caveat": "synthetic test data — says nothing about real-world performance" if cfg.tier == "demo"
+        else ("test split grouped by session, not person — optimistic" if cfg.group_by != "subject_id" else ""),
     }
     (out / "model_card.json").write_text(card.model_dump_json(indent=2))
     tracker.log_metrics({"test_accuracy": o["accuracy"], "test_macro_f1": o["macro_f1"], "test_ece": o["calibration"]["ece"], "temperature": temperature})
     for f in ("model_card.json", "eval_report.json", "eval_report.md"):
         tracker.log_artifact(out / f)
     tracker.end()
+    write_card_md(out)
     print(f"saved {out}")
     return out
+
+
+def write_card_md(out: Path) -> None:
+    """Human-readable model card next to the artifact (same renderer as docs/model-cards)."""
+    import sys
+
+    sys.path.insert(0, str(REPO_ROOT / "scripts"))
+    try:
+        from render_model_cards import render_dir
+
+        (out / "MODEL_CARD.md").write_text(render_dir(out))
+    except Exception as exc:  # noqa: BLE001 - documentation must never fail a training run
+        print(f"[model card] skipped: {exc}")
 
 
 def main() -> None:

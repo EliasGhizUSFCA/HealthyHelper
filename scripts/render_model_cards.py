@@ -24,17 +24,35 @@ def newest(model_id: str) -> Path | None:
 
 
 def render(model_id: str) -> str:
-    e = CATALOG[model_id]
     d = newest(model_id)
-    lines = [f"# Model card — `{model_id}`", ""]
     if d is None:
-        return "\n".join(lines + ["No trained artifact. Status: **unavailable** (the UI shows 'model not loaded').", ""])
+        return "\n".join([f"# Model card — `{model_id}`", "", "No trained artifact. Status: **unavailable** (the UI shows 'model not loaded').", ""])
+    return render_dir(d)
+
+
+def _fmt(v) -> str:
+    return "n/a" if v is None else f"{v:.2f}" if isinstance(v, float) else str(v)
+
+
+TIER_NOTES = {
+    "demo": "> **DEMO tier — trained only on procedurally generated synthetic images.** The numbers below measure how well the "
+            "network separates *synthetic* patterns. They say nothing about performance on real faces, and the model must not be "
+            "used to make any statement about a real person.",
+    "experimental": "> **EXPERIMENTAL tier — trained on real, consented images, but the dataset did not pass (or was not checked "
+                    "against) the validation gate** (enough held-out people, balanced classes, inter-annotator agreement). Treat the "
+                    "metrics as a rough indication on *this* dataset only.",
+    "validated": "> Validated tier: passed the project's validation gate on held-out real data. **Not clinically validated.**",
+}
+
+
+def render_dir(d: Path) -> str:
     c = json.loads((d / "model_card.json").read_text())
+    model_id = c["model_id"]
+    e = CATALOG[model_id]
+    lines = [f"# Model card — `{model_id}`", ""]
     ts = c["training_summary"]
     m = c.get("metrics", {})
-    tier_note = ("> **DEMO tier — trained only on procedurally generated synthetic images.** The numbers below measure how well the "
-                 "network separates *synthetic* patterns. They say nothing about performance on real faces, and the model must not be "
-                 "used to make any statement about a real person.") if c["tier"] == "demo" else "> Validated tier: evaluated on held-out real data. Not clinically validated."
+    tier_note = TIER_NOTES[c["tier"]]
     lines += [
         tier_note, "",
         "| field | value |", "|---|---|",
@@ -43,7 +61,9 @@ def render(model_id: str) -> str:
         f"| abstention | 'inconclusive' when top score < threshold ({c['default_threshold']}); 'abstained' when the quality gate fails |",
         f"| backbone | {c['backbone']} (ImageNet-pretrained: {ts.get('pretrained_imagenet')}) |", f"| input | {c['input_size']}×{c['input_size']} RGB, ImageNet normalisation |",
         f"| calibration | temperature scaling, T = {c['temperature']:.3f} (fitted on validation split) |",
-        f"| data | {', '.join(c['dataset'].get('source', []))}; train/val/test = {ts.get('n_train')}/{ts.get('n_val')}/{ts.get('n_test')} images, split by subject (seed {ts.get('split_seed')}) |",
+        f"| data | {', '.join(c['dataset'].get('source', []))}; train/val/test = {ts.get('n_train')}/{ts.get('n_val')}/{ts.get('n_test')} images, "
+        f"grouped by {c['dataset'].get('group_by', 'subject_id')} (seed {ts.get('split_seed')}); contributors: {c['dataset'].get('subjects', 'n/a')}; "
+        f"label agreement (mean κ): {_fmt(c['dataset'].get('mean_kappa'))} |",
         f"| training | {ts.get('epochs_run')} epochs (best {ts.get('best_epoch')}), {ts.get('train_seconds')} s on {ts.get('device')}, torch {ts.get('torch')}, tracker {ts.get('tracker')} run `{ts.get('run_id')}` |",
         "", "## Intended use", "", c.get("intended_use", ""), "", "## Limitations", "",
     ]

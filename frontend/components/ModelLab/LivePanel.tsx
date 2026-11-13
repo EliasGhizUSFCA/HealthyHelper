@@ -14,6 +14,7 @@ const LAYER_LABELS: [keyof Omit<OverlayLayers, "modelRegions">, string][] = [
   ["lips", "Lips"],
   ["nose", "Nose"],
   ["skin", "Skin"],
+  ["undereye", "Under-eye"],
   ["tracking", "Tracking"],
   ["quality", "Quality"],
 ];

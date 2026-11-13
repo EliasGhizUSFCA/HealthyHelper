@@ -95,6 +95,7 @@ class HealthAssistant:
         if obs is not None:
             evidence_payload = {
                 "image_quality": obs.image_quality, "quality_issues": obs.quality_issues, "demo_mode": obs.demo_mode,
+                "validation_status": obs.validation_status,
                 "observations": [{k: o[k] for k in ("region", "feature", "confidence", "status", "present", "model_tier")} for o in
                                  [x.model_dump() for x in obs.observations]],
                 "medical_diagnosis_requested": obs.medical_diagnosis_requested,
@@ -105,6 +106,7 @@ class HealthAssistant:
             history = history[1:]
         messages = history + [{"role": "user", "content": f"{context_text}\n\n<user_message>\n{last_user}\n</user_message>"}]
         offline_ctx = {"evidence": selected, "demo_mode": bool(obs and obs.demo_mode), "retrieved": docs, "route": route,
+                       "validation_status": obs.validation_status if obs else "none",
                        "image_quality": obs.image_quality if obs else None}
         preview = redact(f"[system prompt: {len(SYSTEM_PROMPT)} chars, static]\n" + "\n".join(
             f"[{m['role']}] {m['content'][:1500]}" for m in messages[-3:]))

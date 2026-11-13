@@ -10,6 +10,7 @@ from app.inference.registry import ModelRegistry
 from app.llm.agent import HealthAssistant
 from app.llm.providers import make_provider
 from app.sessions import SessionStore
+from app.storage.dataset import DatasetStore
 from app.storage.history import HistoryStore
 
 
@@ -29,6 +30,7 @@ class Services:
     sessions: SessionStore
     assistant: HealthAssistant
     history: HistoryStore
+    dataset: DatasetStore
     counters: Counters = field(default_factory=Counters)
 
 
@@ -39,5 +41,5 @@ def build_services(settings: Settings | None = None, load_models: bool = True, p
         reg.load_all()
     return Services(
         settings=s, registry=reg, engine=InferenceEngine(reg, s), sessions=SessionStore(),
-        assistant=HealthAssistant(provider or make_provider(s), s), history=HistoryStore(s),
+        assistant=HealthAssistant(provider or make_provider(s), s), history=HistoryStore(s), dataset=DatasetStore(s),
     )

@@ -158,4 +158,4 @@ def test_no_image_content_in_logs(client, caplog):
 def test_health_and_privacy(client):
     h = client.get("/api/health").json()
     assert h["status"] == "ok" and h["llm_provider"] == "offline-template"
-    assert "never used for model training" in client.get("/api/privacy").json()["training_use"]
+    assert "never used for training" in client.get("/api/privacy").json()["training_use"]

@@ -10,5 +10,8 @@ export const regionLabel = (r: string) =>
     skin_forehead: "Forehead",
     skin_left_cheek: "Left cheek",
     skin_right_cheek: "Right cheek",
+    skin_chin: "Chin",
+    left_undereye: "Under left eye",
+    right_undereye: "Under right eye",
   })[r] ?? humanize(r);
 export const featureLabel = (f: string) => humanize(f.replace(/^visible_/, "visible "));

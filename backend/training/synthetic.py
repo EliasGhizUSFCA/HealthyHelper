@@ -140,11 +140,63 @@ def gen_skin(size, subj, severity, rng):
     return img
 
 
+def gen_blemishes(size, subj, severity, rng):
+    img = _skin_canvas(size, subj["tone"], rng)
+    tone = np.array(subj["tone"], np.float32)
+    for _ in range(int(severity * 14)):
+        p = (int(rng.uniform(6, size - 6)), int(rng.uniform(6, size - 6)))
+        r = int(rng.uniform(2, 6))
+        halo = np.zeros((size, size), np.float32)
+        cv2.circle(halo, p, r * 2, 1.0, -1)
+        halo = cv2.GaussianBlur(halo, (0, 0), r)[..., None]
+        img = img * (1 - 0.45 * halo) + (tone * 0.75 + np.array([70, 0, 0])) * 0.45 * halo
+        cv2.circle(img, p, r, tuple(float(v) for v in tone * 0.8 + np.array([55, 5, 5])), -1)
+        if rng.random() < 0.5:
+            cv2.circle(img, (p[0] - 1, p[1] - 1), max(1, r // 3), tuple(min(255.0, float(v) * 1.15 + 40) for v in tone), -1)
+    return img
+
+
+def gen_skin_redness(size, subj, severity, rng):
+    img = _skin_canvas(size, subj["tone"], rng)
+    red = np.zeros((size, size), np.float32)
+    for _ in range(int(1 + severity * 4)):
+        c = (int(rng.uniform(0, size)), int(rng.uniform(0, size)))
+        cv2.ellipse(red, c, (int(rng.uniform(10, 35)), int(rng.uniform(8, 25))), float(rng.uniform(0, 180)), 0, 360, 1.0, -1)
+    red = cv2.GaussianBlur(red, (0, 0), size * 0.07)[..., None] * severity
+    return img * (1 - 0.5 * red) + np.array([210, 70, 70], np.float32) * 0.5 * red
+
+
+def gen_shine(size, subj, severity, rng):
+    img = _skin_canvas(size, subj["tone"], rng)
+    spec = np.zeros((size, size), np.float32)
+    for _ in range(int(1 + severity * 5)):
+        c = (int(rng.uniform(0, size)), int(rng.uniform(0, size)))
+        cv2.ellipse(spec, c, (int(rng.uniform(6, 22)), int(rng.uniform(4, 12))), float(rng.uniform(0, 180)), 0, 360, 1.0, -1)
+    spec = cv2.GaussianBlur(spec, (0, 0), 4)[..., None] * severity
+    return img * (1 - 0.6 * spec) + 250.0 * 0.6 * spec
+
+
+def gen_undereye(size, subj, severity, rng):
+    img = _skin_canvas(size, subj["tone"], rng)
+    tone = np.array(subj["tone"], np.float32)
+    c = (size // 2 + int(rng.integers(-4, 5)), int(size * 0.18))
+    cv2.ellipse(img, c, (int(size * 0.4), int(size * 0.12)), 0, 0, 180, tuple(float(v) * 0.5 for v in tone), 2)  # lower lid line
+    dark = np.zeros((size, size), np.float32)
+    cv2.ellipse(dark, (c[0], c[1] + int(size * 0.1)), (int(size * 0.36), int(size * 0.16)), 0, 0, 180, 1.0, -1)
+    dark = cv2.GaussianBlur(dark, (0, 0), size * 0.06)[..., None] * severity
+    shade = tone * np.array([0.62, 0.55, 0.62])  # darker, slightly purple-brown
+    return img * (1 - 0.6 * dark) + shade * 0.6 * dark
+
+
 GENERATORS = {
     "lip_dryness": gen_lips,
     "eye_redness": gen_eye,
     "nasal_redness": gen_nose,
     "skin_flaking": gen_skin,
+    "skin_blemishes": gen_blemishes,
+    "skin_redness": gen_skin_redness,
+    "skin_shine": gen_shine,
+    "undereye_darkness": gen_undereye,
 }
 
 

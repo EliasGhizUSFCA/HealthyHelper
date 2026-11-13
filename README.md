@@ -2,17 +2,23 @@
 
 An observable, extensible computer-vision + LLM system that looks at a webcam image and gives
 **wellness-education feedback about visible facial features** — lip dryness, eye-white redness, redness
-around the nose, skin flaking — while being explicit about uncertainty.
+around the nose, skin flaking, acne-like spots/blemishes, irritated-looking (red) skin, skin shine and
+darker-looking skin under the eyes — while being explicit about uncertainty.
 
 > **Not a medical device.** It describes visible appearance in an image, never conditions. A camera cannot
-> establish dehydration, infection or illness. The shipped models are **DEMO tier: trained only on synthetic
-> images**, so their outputs on real faces are not observations — the UI and the assistant say so.
+> establish dehydration, infection, acne or any other condition — it can only say "spots are visible".
+> `make demo-models` produces **DEMO-tier models trained only on synthetic images**; to get models trained on
+> real faces, collect and label your own consented data in the app (`/collect`, `/label`) and run
+> `make train-real` — those models are marked **experimental** until they pass a validation gate.
 
 Two interfaces:
 
 * **Health Mirror** (`/mirror`) — approachable, accessible UI: consented camera, positioning guidance,
   observation cards with plain-language uncertainty, symptom entry, grounded chat assistant, optional
   consented snapshots for side-by-side comparison (`/history`).
+* **Collect & Label** (`/collect`, `/label`) — consented real-data collection (separate research consent,
+  withdrawable) and a blind, keyboard-driven labelling tool with inter-annotator agreement and one-click
+  export to a training manifest.
 * **Model Lab** (`/lab`) — a dark, resizable six-panel developer dashboard driven entirely by live telemetry:
   detection overlays, model-input inspector (raw crop vs. de-normalised tensor), live probabilities with
   threshold control, Grad-CAM explainability, pipeline/performance monitor and LLM context + agent trace.
@@ -27,11 +33,15 @@ number on screen is a real measurement or a real model output; the models are DE
 
 ```bash
 make setup          # CPU PyTorch, backend dev deps, frontend deps (+ MediaPipe WASM copy)
-make demo-models    # synthetic datasets + 4 DEMO models (optional; ~10 min on 4 CPU cores)
+make demo-models    # synthetic datasets + 8 DEMO models (optional; ~20 min on 4 CPU cores)
 make backend        # FastAPI on :8000
 make frontend       # Next.js on :3000
 make test           # backend pytest + frontend vitest + typecheck
 ```
+
+Real data: open `/collect`, give consent, capture under varied conditions (ideally several people), label on
+`/label` (ideally two annotators), then `make train-real MODEL=lip_dryness` (`GROUP=session_id` if fewer than
+three people). Details and caveats: [docs/datasets.md](docs/datasets.md#collecting-and-training-on-real-data-built-into-the-app).
 
 No GPU, LLM key or trained model is required to run: missing models report **unavailable** (no scores
 are shown), and without `ANTHROPIC_API_KEY` the assistant uses a clearly labelled deterministic template
@@ -94,12 +104,23 @@ from ping/pong, so the execution timeline is coherent across machines.
 7. **Artifacts**: `models/<id>/<version>/{weights.pt, model.onnx, model_card.json, eval_report.{json,md}}`;
    tracked in MLflow (SQLite backend; JSON fallback). `make onnx` exports with a numerical parity check.
 
+### Model tiers
+
+| tier | trained on | how it is shown |
+|---|---|---|
+| `demo` | synthetic images only (`make demo-models`) | "Demonstration model" banner; assistant must say so |
+| `experimental` | real consented crops from `/collect`, any size (`make train-real`) | "Experimental" badge; assistant must say it's not validated |
+| `validated` | real data that passes the gate: ≥ 15 people / ≥ 100 images / ≥ 30 per class in the test split, person-grouped split, annotator κ ≥ 0.6 | normal display — still not clinically validated |
+
+`training.train` refuses mismatches (e.g. `demo` on real data, `validated` without passing the gate) and
+records contributors, agreement and split grouping in the model card.
+
 ### What is actually trained
 
 There is no suitable public dataset with webcam-quality labels for these features (see
 [docs/datasets.md](docs/datasets.md)). To exercise the whole pipeline honestly, `training/synthetic.py`
 procedurally generates cartoon-like region patches across six skin-tone groups with per-subject appearance,
-varied capture conditions and 3 % label noise. Four ResNet-18 (ImageNet-pretrained) **DEMO** models were
+varied capture conditions and 3 % label noise. Eight ResNet-18 (ImageNet-pretrained) **DEMO** models were
 trained on it. Held-out *synthetic* test results (from the generated model cards in
 [docs/model-cards/](docs/model-cards/)):
 
@@ -109,6 +130,10 @@ trained on it. Held-out *synthetic* test results (from the generated model cards
 | eye_redness | left/right eye | 200 | 0.930 | 0.930 | 0.052 |
 | nasal_redness | nose | 200 | 0.955 | 0.955 | 0.029 |
 | skin_flaking | forehead, cheeks | 200 | 0.900 | 0.900 | 0.035 |
+| skin_blemishes | forehead, cheeks, chin | 200 | 0.930 | 0.930 | 0.029 |
+| skin_redness | forehead, cheeks, chin | 200 | 0.950 | 0.950 | 0.032 |
+| skin_shine | forehead, cheeks, chin | 200 | 0.920 | 0.920 | 0.039 |
+| undereye_darkness | under left/right eye | 200 | 0.950 | 0.950 | 0.045 |
 
 These numbers only show that the networks separate the synthetic patterns; **they say nothing about
 real-world performance, fairness, or clinical value.** Weights are not committed (`make demo-models`
@@ -143,19 +168,20 @@ region ≈ 14 ms. Details, per-stage timings and caveats (e.g. ONNX thread overs
 ## Privacy & safety
 
 Camera only on explicit click with a visible active indicator; nothing recorded; crops uploaded only after
-opt-in and never persisted; snapshots only with separate consent and fully deletable; user images never
-used for training; chat not logged by default; secrets server-side. No HIPAA or medical-device claims.
+opt-in and never persisted; snapshots only with separate consent and fully deletable; Mirror/Lab/snapshot
+images never used for training — only Collect-page crops under a separate, withdrawable research consent;
+chat not logged by default; secrets server-side. No HIPAA or medical-device claims.
 See [docs/privacy-and-safety.md](docs/privacy-and-safety.md).
 
 ## Testing
 
-* **Backend (pytest, 69 tests)**: crop alignment & clamping, face alignment, preprocessing parity, schema
+* **Backend (pytest, 78 tests)**: crop alignment & clamping, face alignment, preprocessing parity, schema
   contract (Pydantic ↔ TS ↔ JSON Schema), classifier inference, inconclusive/abstain handling, Grad-CAM,
   ONNX parity, telemetry ordering, WebSocket consent/backpressure/reconnection/explain, safety routing,
   validator, agent retry/fallback, Anthropic provider request shape (mocked), consent + deletion, log
-  hygiene, grouped-split leakage, metrics/calibration, end-to-end train → registry → inference, and an
+  hygiene, consented data collection/labelling/withdrawal, κ + consensus, tier and validation-gate enforcement, grouped-split leakage, metrics/calibration, end-to-end train → registry → inference, and an
   integration test image → crops → models → observations → grounded chat.
-* **Frontend (vitest, 63 tests)**: region geometry (incl. a reference case shared with the backend test so
+* **Frontend (vitest, 68 tests)**: region geometry (incl. a reference case shared with the backend test so
   browser and server crops are pinned to identical numbers), letterbox overlay transform, quality heuristics,
   camera permission/error mapping, WebSocket reconnect/backoff/session resume, telemetry ordering and bounds,
   `regions.json` copy in sync with `shared/`.

@@ -50,7 +50,8 @@ RETENTION_POLICY = {
     "region_crops": "Sent to the server only after explicit opt-in, processed in memory, discarded after inference. Never written to disk or logs.",
     "observations": "Derived scores are held in server memory for the live session (TTL-evicted) and deleted with DELETE /api/sessions/{id}.",
     "snapshots": "Stored ONLY with explicit consent for longitudinal comparison: aligned region crops + derived metadata, until you delete them (DELETE /api/history/{history_id}).",
-    "training_use": "User images are never used for model training.",
+    "training_use": "Images from the Mirror, Model Lab and snapshots are never used for training. Only crops captured on the Collect page, under a separate research consent, are stored for training; withdrawing consent deletes all of them (DELETE /api/dataset/contributors/{id}).",
+    "training_data": "Collected crops and labels are stored on the machine running the backend (DATA_DIR/dataset), are never uploaded elsewhere by this app, and are excluded from git.",
     "chat": "Conversation text is not logged by default (LOG_SENSITIVE_CONTENT=false).",
     "compliance": "This is a portfolio/education project. It has not been assessed for HIPAA or medical-device regulations and makes no such claims.",
 }

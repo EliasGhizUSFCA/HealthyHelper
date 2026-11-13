@@ -34,11 +34,12 @@ export const REGION_DEFS = regionsJson.regions as Record<RegionName, RegionDef>;
 export const REGION_NAMES = Object.keys(REGION_DEFS) as RegionName[];
 export const REGIONS_VERSION: string = regionsJson.version;
 
-export const REGION_GROUPS: Record<"eyes" | "lips" | "nose" | "skin", RegionName[]> = {
+export const REGION_GROUPS: Record<"eyes" | "lips" | "nose" | "skin" | "undereye", RegionName[]> = {
   eyes: ["left_eye", "right_eye"],
   lips: ["lips"],
   nose: ["nose"],
-  skin: ["skin_forehead", "skin_left_cheek", "skin_right_cheek"],
+  skin: ["skin_forehead", "skin_left_cheek", "skin_right_cheek", "skin_chin"],
+  undereye: ["left_undereye", "right_undereye"],
 };
 
 export const REGION_COLORS: Record<RegionName, string> = {
@@ -49,6 +50,9 @@ export const REGION_COLORS: Record<RegionName, string> = {
   skin_forehead: "#a78bfa",
   skin_left_cheek: "#c084fc",
   skin_right_cheek: "#818cf8",
+  skin_chin: "#e879f9",
+  left_undereye: "#34d399",
+  right_undereye: "#4ade80",
 };
 
 /**

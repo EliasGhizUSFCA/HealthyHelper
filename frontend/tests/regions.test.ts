@@ -14,8 +14,10 @@ describe("regions.json sync", () => {
     if (!existsSync(shared)) return; // standalone frontend checkout (e.g. Vercel)
     expect(readFileSync(local, "utf8")).toBe(readFileSync(shared, "utf8"));
   });
-  it("defines all seven regions", () => {
-    expect(REGION_NAMES.sort()).toEqual(["left_eye", "lips", "nose", "right_eye", "skin_forehead", "skin_left_cheek", "skin_right_cheek"]);
+  it("defines all ten regions", () => {
+    expect([...REGION_NAMES].sort()).toEqual([
+      "left_eye", "left_undereye", "lips", "nose", "right_eye", "right_undereye", "skin_chin", "skin_forehead", "skin_left_cheek", "skin_right_cheek",
+    ]);
   });
 });
 
@@ -74,7 +76,7 @@ describe("computeRegionBox", () => {
 
   it("computes every region", () => {
     const lm = fakeLandmarks((i) => ({ x: 0.2 + ((i * 37) % 100) / 200, y: 0.2 + ((i * 53) % 100) / 200 }));
-    expect(computeAllRegions(lm, W, H)).toHaveLength(7);
+    expect(computeAllRegions(lm, W, H)).toHaveLength(10);
   });
 });
 

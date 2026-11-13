@@ -1,4 +1,4 @@
-.PHONY: setup backend frontend test test-backend test-frontend lint demo-models evaluate onnx schemas docker
+.PHONY: setup backend frontend test test-backend test-frontend lint demo-models train-real evaluate onnx schemas docker
 PY ?= python3
 
 setup:
@@ -15,6 +15,19 @@ frontend:
 ## Synthetic data + DEMO-tier models (exercise the pipeline; NOT real health models)
 demo-models:
 	scripts/train_demo_models.sh
+
+## Train on your REAL collected + labelled data (Collect → Label → this). Usage: make train-real MODEL=lip_dryness
+## Exports the manifest from the dataset store, then trains an EXPERIMENTAL-tier model. Add GROUP=session_id if
+## fewer than 3 people contributed, TIER=validated to attempt the validation gate, EPOCHS=n, BACKBONE=...
+MODEL ?= lip_dryness
+TIER ?= experimental
+GROUP ?= subject_id
+EPOCHS ?= 20
+BACKBONE ?= resnet18
+train-real:
+	cd backend && $(PY) -m training.export_dataset --model-id $(MODEL)
+	cd backend && $(PY) -m training.train --model-id $(MODEL) --manifest ../data/runtime/dataset/manifests/$(MODEL).csv \
+	  --backbone $(BACKBONE) --pretrained --tier $(TIER) --group-by $(GROUP) --epochs $(EPOCHS) --class-weighted --patience 4
 
 ## Re-run evaluation for the newest version of each model on its synthetic test split
 evaluate:

@@ -3,6 +3,12 @@ import type {
   ChatRequest,
   ChatResponse,
   ComparisonResult,
+  DatasetCapture,
+  DatasetConsent,
+  DatasetExport,
+  DatasetLabel,
+  DatasetModelStats,
+  DatasetSample,
   DeletionReport,
   ModelInfo,
   SnapshotCreate,
@@ -56,7 +62,52 @@ export const api = {
   deleteHistory: (historyId: string) =>
     req<DeletionReport>(`/api/history/${encodeURIComponent(historyId)}`, { method: "DELETE" }),
   privacy: () => req<Record<string, unknown>>("/api/privacy"),
+  // consented training-data collection
+  datasetConsent: (body: DatasetConsent) => req<Record<string, unknown>>("/api/dataset/consent", { method: "POST", body: JSON.stringify(body) }),
+  datasetAdd: (body: DatasetCapture) => req<DatasetSample[]>("/api/dataset/samples", { method: "POST", body: JSON.stringify(body) }),
+  datasetSamples: (q: { model_id?: string; contributor_id?: string; limit?: number }) => {
+    const p = new URLSearchParams(Object.entries(q).filter(([, v]) => v != null).map(([k, v]) => [k, String(v)]));
+    return req<DatasetSample[]>(`/api/dataset/samples?${p}`);
+  },
+  datasetImageUrl: (sampleId: string) => `${API_URL}/api/dataset/samples/${encodeURIComponent(sampleId)}/image`,
+  datasetLabel: (sampleId: string, body: DatasetLabel) =>
+    req<{ ok: boolean }>(`/api/dataset/samples/${encodeURIComponent(sampleId)}/labels`, { method: "PUT", body: JSON.stringify(body) }),
+  datasetDeleteSample: (sampleId: string) => req<{ deleted: boolean }>(`/api/dataset/samples/${encodeURIComponent(sampleId)}`, { method: "DELETE" }),
+  datasetWithdraw: (contributorId: string) =>
+    req<DeletionReport>(`/api/dataset/contributors/${encodeURIComponent(contributorId)}`, { method: "DELETE" }),
+  datasetStats: () => req<DatasetModelStats[]>("/api/dataset/stats"),
+  datasetExport: (modelId: string) => req<DatasetExport>(`/api/dataset/export/${encodeURIComponent(modelId)}`, { method: "POST" }),
 };
+
+function localId(key: string, prefix: string, create = true): string | null {
+  try {
+    let id = localStorage.getItem(key);
+    if (!id && create) {
+      id = `${prefix}-${crypto.randomUUID().replace(/-/g, "").slice(0, 16)}`;
+      localStorage.setItem(key, id);
+    }
+    return id;
+  } catch {
+    return null;
+  }
+}
+export const getContributorId = (create = true) => localId("ahm.contributor_id", "contrib", create);
+export const getAnnotatorId = (create = true) => localId("ahm.annotator_id", "annot", create);
+export function setAnnotatorId(id: string) {
+  try {
+    localStorage.setItem("ahm.annotator_id", id);
+  } catch {
+    /* ignore */
+  }
+}
+export function forgetContributorId() {
+  try {
+    localStorage.removeItem("ahm.contributor_id");
+    localStorage.removeItem("ahm.research_consent");
+  } catch {
+    /* ignore */
+  }
+}
 
 const HISTORY_KEY = "ahm.history_id";
 
