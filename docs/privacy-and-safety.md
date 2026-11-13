@@ -9,14 +9,14 @@ diagnostic claims, and has not been assessed for HIPAA, GDPR-health-data, or med
 |---|---|---|---|---|
 | Camera frames | Processed in the browser only; never recorded | — | none | n/a |
 | Facial landmarks | Browser memory only | Sent with a snapshot | snapshot lifetime | with snapshot |
-| Region crops (≤160 px) | **Not sent** | Sent over WebSocket after the user ticks "Send small cropped face regions…" | processed in memory, discarded after inference; never written to disk or logs | n/a |
+| Region crops (≤160 px) | **Not sent** | Sent over WebSocket after the user starts analysis ("Start camera & analysis" on the Mirror, or the "Send small cropped face regions…" checkbox elsewhere) | processed in memory, discarded after inference; never written to disk or logs | n/a |
 | Derived scores / observations | — | Held in server memory per session | TTL (`SESSION_TTL_S`, default 1 h) | `DELETE /api/sessions/{id}` |
 | Snapshots (aligned crops + metadata) | **Not stored** | Separate explicit consent dialog per snapshot; consent text version + time recorded | until deleted | `DELETE /api/history/{history_id}` removes DB rows **and** files (tested) |
 | Chat text | Not logged (`LOG_SENSITIVE_CONTENT=false`) | — | request lifetime | n/a |
 | Mirror/Lab/snapshot images for training | **Never** used for training | — | — | — |
 | Training crops (Collect page) | **Not collected** | Separate research consent; crops ≤ 256 px of each region + optional self-reported conditions, linked to a random contributor ID | until withdrawn or deleted | Withdraw on `/collect` → `DELETE /api/dataset/contributors/{id}` removes all crops, labels and the consent record (tested). Retrain or delete models trained on them. |
 
-| Apparent-age estimate | **Off** | Opt-in toggle; a whole-face crop is sent only while it is on | not stored anywhere; never sent to the LLM | n/a |
+| Apparent-age estimate | Off until the camera is started | On the Health Mirror, "Start camera & analysis" turns on analysis and the age switch (both visible as switches next to the button, with a one-line notice of what is sent); turning a switch off is remembered in the browser. Elsewhere (Beauty, Lab) it is an explicit opt-in toggle. A whole-face crop is sent only while it is on | not stored anywhere; never sent to the LLM | n/a |
 | Confirmed age range | – | Chosen by the user after an estimate (or directly) | browser memory for the tab only | closing the tab |
 | Product recommendation requests | – | Concern/preferences the user selects | not stored | n/a |
 | Data sent to the retailer | **None** | — | — | The catalogue job requests public product pages only; recommendations run on the local catalogue. Product images are loaded by the browser from the retailer's CDN, so the retailer can see a viewer's IP address and that an image was requested (no other data). |

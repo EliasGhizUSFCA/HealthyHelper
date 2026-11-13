@@ -1,13 +1,14 @@
 "use client";
 
-import { EngineProvider, useEngine, useEngineState } from "@/hooks/useEngine";
+import { EngineProvider, useEngineState } from "@/hooks/useEngine";
 import { CameraView } from "@/components/CameraView/CameraView";
 import { MIRROR_LAYERS } from "@/components/FaceOverlay/drawOverlay";
 import { ChatAssistant } from "@/components/ChatAssistant/ChatAssistant";
 import { SiteNav } from "@/components/SiteNav";
-import { CameraActiveIndicator, ConsentToggle } from "./CameraControls";
+import { CameraActiveIndicator } from "./CameraControls";
+import { AnalysisControls } from "./AnalysisControls";
+import { CompactObservations } from "./CompactObservations";
 import { Guidance } from "./Guidance";
-import { ObservationCards } from "./ObservationCards";
 import { SymptomInput } from "./SymptomInput";
 import { SnapshotButton } from "./SnapshotButton";
 import { CameraPicker } from "@/components/CameraView/CameraPicker";
@@ -16,8 +17,7 @@ import { ProductSidebar } from "@/components/Beauty/ProductSidebar";
 import { useState } from "react";
 
 function MirrorInner() {
-  const engine = useEngine();
-  const { camera, cameraError, socket, settings } = useEngineState();
+  const { cameraError, socket, settings } = useEngineState();
   const [ideas, setIdeas] = useState(false);
   const width = ideas ? "max-w-[1440px]" : "max-w-6xl";
   return (
@@ -40,26 +40,18 @@ function MirrorInner() {
               </div>
             )}
           </div>
-          <div className="flex flex-wrap items-center gap-3">
-            {camera !== "on" ? (
-              <button type="button" onClick={() => engine.startCamera()} disabled={camera === "starting"} className="rounded-lg bg-sky-700 px-5 py-2.5 text-base font-medium text-white hover:bg-sky-800 disabled:opacity-50">
-                {camera === "starting" ? "Starting…" : "Start camera"}
-              </button>
-            ) : (
-              <button type="button" onClick={() => engine.stopCamera()} className="rounded-lg bg-rose-700 px-5 py-2.5 text-base font-medium text-white hover:bg-rose-800">
-                Stop camera
-              </button>
-            )}
+          <AnalysisControls />
+          <div className="flex flex-wrap items-center gap-2">
             <SnapshotButton />
             <button
               type="button"
               onClick={() => setIdeas((v) => !v)}
               aria-pressed={ideas}
-              className={`rounded-lg border px-4 py-2.5 text-base font-medium ${ideas ? "border-sky-700 bg-sky-50 text-sky-900" : "border-slate-300 bg-white text-slate-800 hover:bg-slate-50"}`}
+              className={`rounded-lg border px-3 py-2 text-sm font-medium ${ideas ? "border-sky-700 bg-sky-50 text-sky-900" : "border-slate-300 bg-white text-slate-800 hover:bg-slate-50"}`}
             >
               {ideas ? "Hide product ideas" : "🛍 Product ideas"}
             </button>
-            <span className="text-sm text-slate-500">Server: {socket.status === "open" ? "connected" : socket.status}</span>
+            <span className="text-xs text-slate-500">Server: {socket.status === "open" ? "connected" : socket.status}</span>
           </div>
           {cameraError && (
             <p role="alert" className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-rose-900">
@@ -68,14 +60,13 @@ function MirrorInner() {
           )}
           <CameraPicker />
           <Guidance />
-          <ConsentToggle />
-          <AgeOptIn />
         </section>
         <section aria-label="Observations and assistant" className="space-y-6">
           <div>
-            <h1 className="text-2xl font-semibold text-slate-900">What the mirror can see</h1>
-            <div className="mt-3">
-              <ObservationCards />
+            <h1 className="text-xl font-semibold text-slate-900">What the mirror notices</h1>
+            <div className="mt-2 space-y-3">
+              <CompactObservations />
+              <AgeOptIn compact />
             </div>
           </div>
           <SymptomInput />

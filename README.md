@@ -80,7 +80,9 @@ same paths under `backend/app/recommendations/`; `privacy` / `safety` → `backe
 
 ### Apparent age (opt-in)
 
-Off by default; the face crop is sent only while the user has it on. The model returns a probability
+Nothing is sent until the user starts the camera. On the Health Mirror, "Start camera & analysis" switches on
+analysis and the age estimate together (both shown as switches beside the button with a one-line notice; an
+opt-out is remembered); on other pages it is an explicit opt-in. The face crop is sent only while it is on. The model returns a probability
 distribution over six ranges (under 20, 20–29, …, 60+ — set by FairFace's bins), an expected age, an 80 %
 plausible span, entropy and an accept/inconclusive decision. The user can confirm, correct, skip or disable it;
 estimates are never stored, never sent to the LLM, and never used for ranking — only a **confirmed** range is

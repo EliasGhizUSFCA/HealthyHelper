@@ -7,13 +7,13 @@ import { confirmableLabel, spanLabel, suggestConfirmable, uncertaintyLabel, type
 import { cx } from "@/components/ui";
 
 /** User-facing apparent-age opt-in + confirm / correct / skip / disable. Nothing here is persisted. */
-export function AgeOptIn({ dark = false }: { dark?: boolean }) {
+export function AgeOptIn({ dark = false, compact = false }: { dark?: boolean; compact?: boolean }) {
   const engine = useEngine();
   const { age, latestResult, settings } = useEngineState();
   const [correcting, setCorrecting] = useState(false);
   const [pick, setPick] = useState<ConfirmableRange | "">("");
   const est = latestResult?.age ?? null;
-  const box = cx("rounded-xl border p-4", dark ? "border-zinc-800 bg-zinc-950 text-xs text-zinc-300" : "border-slate-200 bg-white text-sm text-slate-700");
+  const box = compact ? "text-sm text-slate-700" : cx("rounded-xl border p-4", dark ? "border-zinc-800 bg-zinc-950 text-xs text-zinc-300" : "border-slate-200 bg-white text-sm text-slate-700");
   const btn = cx("rounded-lg px-3 py-1.5 font-medium", dark ? "border border-zinc-700 bg-zinc-900 text-zinc-100" : "border border-slate-300 bg-white text-slate-800 hover:bg-slate-50");
   const primary = cx("rounded-lg px-3 py-1.5 font-medium text-white", dark ? "bg-cyan-800" : "bg-sky-700 hover:bg-sky-800");
   const suggested = suggestConfirmable(est?.expected_age_years);
@@ -37,11 +37,12 @@ export function AgeOptIn({ dark = false }: { dark?: boolean }) {
     </label>
   );
 
-  if (!age.enabled) return <div className={box}>{toggle}</div>;
+  if (!age.enabled) return compact ? null : <div className={box}>{toggle}</div>;
+  if (compact && !age.confirmedRange && age.status !== "skipped" && (!est || est.decision === "unavailable" || est.decision === "abstained")) return null;
 
   return (
     <div className={box} aria-live="polite">
-      {toggle}
+      {!compact && toggle}
       {!settings.consentUpload && <p className="mt-2">Age estimation needs the “send small cropped regions” option above.</p>}
       {settings.consentUpload && !est && <p className="mt-2">Waiting for the next analysis…</p>}
       {est && est.decision === "unavailable" && <p className="mt-2">No age model is installed on the server, so no estimate is available.</p>}
@@ -57,10 +58,12 @@ export function AgeOptIn({ dark = false }: { dark?: boolean }) {
               {est.model_tier === "demo" ? "Demo model" : "Experimental model"}
             </p>
           )}
-          <p className={dark ? "text-zinc-500" : "text-slate-500"}>{est.disclaimer}</p>
+          <p className={cx(dark ? "text-zinc-500" : "text-slate-500", compact && "text-xs")} title={compact ? est.disclaimer : undefined}>
+            {compact ? "How old the face looks to the model — broad, often wrong, never stored." : est.disclaimer}
+          </p>
         </div>
       )}
-      <div className="mt-3 flex flex-wrap items-center gap-2">
+      <div className={cx("flex flex-wrap items-center gap-2", compact ? "mt-1.5 text-xs" : "mt-3")}>
         {age.confirmedRange ? (
           <>
             <span>
