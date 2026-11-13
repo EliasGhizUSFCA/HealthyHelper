@@ -10,20 +10,22 @@ import { Guidance } from "./Guidance";
 import { ObservationCards } from "./ObservationCards";
 import { SymptomInput } from "./SymptomInput";
 import { SnapshotButton } from "./SnapshotButton";
+import { CameraPicker } from "@/components/CameraView/CameraPicker";
+import { AgeOptIn } from "@/components/Age/AgeOptIn";
 
 function MirrorInner() {
   const engine = useEngine();
-  const { camera, cameraError, socket } = useEngineState();
+  const { camera, cameraError, socket, settings } = useEngineState();
   return (
     <div className="min-h-full">
       <header className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-6 py-4">
         <SiteNav current="/mirror" />
         <CameraActiveIndicator />
       </header>
-      <main id="main" className="mx-auto grid max-w-6xl gap-6 px-6 pb-12 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)]">
+      <main id="main" className="mx-auto grid max-w-6xl grid-cols-[minmax(0,1fr)] gap-6 px-4 pb-12 sm:px-6 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)]">
         <section aria-label="Camera" className="space-y-4">
           <div className="aspect-[4/3] overflow-hidden rounded-2xl border border-slate-200 bg-slate-200 shadow-sm">
-            <CameraView layers={MIRROR_LAYERS} mirrored fit="cover" dark={false} />
+            <CameraView layers={MIRROR_LAYERS} mirrored={settings.mirrored} fit="cover" dark={false} />
           </div>
           <div className="flex flex-wrap items-center gap-3">
             {camera !== "on" ? (
@@ -43,8 +45,10 @@ function MirrorInner() {
               {cameraError.message}
             </p>
           )}
+          <CameraPicker />
           <Guidance />
           <ConsentToggle />
+          <AgeOptIn />
         </section>
         <section aria-label="Observations and assistant" className="space-y-6">
           <div>

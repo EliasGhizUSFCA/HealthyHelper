@@ -162,3 +162,13 @@ def test_strict_ingredient_check_drops_unverifiable():
     ranked, removed, _ = rank(req(fragrance_free=True, strict_ingredient_check=True), catalog())
     assert "Mystery Lip Balm" in {r.name for r in removed if "strict" in r.reason}
     assert all(r.product.attributes.fragrance_free_claimed == "yes" or r.product.attributes.contains_fragrance_ingredient == "no" for r in ranked)
+
+
+def test_banned_retailer_claims_are_never_quoted_or_returned(services):
+    from app.recommendations.service import RecommendationService
+
+    p = parse_product(product_page(name="Proven Lip Balm", sku="CP1", description="Clinically proven to heal chapped lips in one day. A moisturizing balm for dry lips."), B + "cp/")
+    services.catalog.upsert(p)
+    r = RecommendationService(services.catalog, services.assistant.provider).recommend(RecommendationRequest(mode="skincare", concern="dry_lips"))
+    assert r.explanations is not None and all(c["passed"] for c in r.trace.validation)
+    assert "clinically proven" not in " ".join(e.explanation.lower() for e in r.explanations.products)

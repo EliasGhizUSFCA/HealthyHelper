@@ -53,6 +53,7 @@ export const REGION_COLORS: Record<RegionName, string> = {
   skin_chin: "#e879f9",
   left_undereye: "#34d399",
   right_undereye: "#4ade80",
+  face: "#f8fafc",
 };
 
 /**

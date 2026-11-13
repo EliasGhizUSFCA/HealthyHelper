@@ -7,6 +7,13 @@ import { Badge, LabButton, LabToggle, SimulatedBanner, statusTone } from "@/comp
 import { buildDiagnostics } from "@/lib/diagnostics";
 import { downloadBlob } from "@/lib/crops";
 import { fmt } from "@/lib/format";
+import { CameraPicker } from "@/components/CameraView/CameraPicker";
+
+export const PERFORMANCE_MODES = [
+  { key: "saver", label: "Power saver", hz: 0.5, inputs: false },
+  { key: "balanced", label: "Balanced", hz: 2, inputs: true },
+  { key: "responsive", label: "Responsive", hz: 5, inputs: true },
+] as const;
 
 export function LabToolbar() {
   const engine = useEngine();
@@ -66,6 +73,25 @@ export function LabToolbar() {
           <span className="w-11 font-mono text-zinc-200">{s.inferenceHz.toFixed(1)}Hz</span>
         </label>
         <LabToggle label="Inputs" checked={s.returnInputs} onChange={(v) => engine.updateSettings({ returnInputs: v })} title="Ask the server to return raw/tensor previews" />
+        <div role="radiogroup" aria-label="Performance mode" className="flex overflow-hidden rounded border border-zinc-700">
+          {PERFORMANCE_MODES.map((m) => {
+            const active = s.inferenceHz === m.hz && s.returnInputs === m.inputs;
+            return (
+              <button
+                key={m.key}
+                type="button"
+                role="radio"
+                aria-checked={active}
+                title={`${m.hz} Hz inference${m.inputs ? ", model-input previews" : ", no previews"}`}
+                onClick={() => engine.updateSettings({ inferenceHz: m.hz, returnInputs: m.inputs })}
+                className={`px-2 py-0.5 text-[11px] ${active ? "bg-cyan-800 text-white" : "bg-zinc-900 text-zinc-400"}`}
+              >
+                {m.label}
+              </button>
+            );
+          })}
+        </div>
+        {s.source === "camera" && <CameraPicker dark />}
         <div className="ml-auto flex flex-wrap items-center gap-2">
           <CameraActiveIndicator dark />
           <Badge tone={statusTone(state.socket.status)} title={state.socket.lastError ?? undefined}>

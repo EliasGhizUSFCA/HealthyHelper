@@ -81,9 +81,14 @@ class RecommendationService:
                 msg = msg + [{"role": "assistant", "content": res.reply.model_dump_json()},
                              {"role": "user", "content": "These checks failed: " + "; ".join(
                                  f"{c['name']}: {c['detail']}" for c in checks if not c["passed"]) + ". Rewrite so every check passes."}]
-            if explanations is None:  # template is always valid by construction; validate anyway
+            if explanations is None:
                 explanations = X.template_explanations(ctx)
                 checks = X.validate(explanations, ctx)
+                if not all(c["passed"] for c in checks):  # last resort: facts only, no quoted retailer text
+                    explanations = X.template_explanations(ctx, quote_claims=False)
+                    checks = X.validate(explanations, ctx)
+                if not all(c["passed"] for c in checks):  # never return explanations that fail validation
+                    explanations = None
                 llm_info = {**llm_info, "provider": "offline-template", "fallback": True}
 
         timings["total"] = perf_ms() - t0

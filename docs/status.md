@@ -58,3 +58,19 @@ or partially · ⛔ not done (see "Open items").
 5. Optional server-side landmarking for clients without WASM support.
 6. Triage is keyword-based; a reviewed classifier would improve recall on paraphrases.
 7. A committed Playwright E2E suite (the E2E checks so far were run as ad-hoc scripts).
+
+## v2 (age, eCosmetics, recommendations, Model Lab tabs)
+* ✅ eCosmetics connector: access review documented; robots/kill-switch/blocked paths enforced and tested;
+  first real refresh = 271 products (1 HTTP 429 received and logged).
+* ✅ Catalogue: JSON-LD parser, attributes/claims, dedupe with URL aliases, price history, staleness, feed import.
+* ✅ Recommender: logged hard filters, weighted components (missing = neutral), strict ingredient option,
+  confirmed-age-only appropriateness; grounded explanations that are never returned if they fail validation.
+* ✅ Apparent-age model (experimental, FairFace CC BY 4.0): 0.578 range accuracy / 0.931 within ±1 / ECE 0.032 on
+  4,000 held-out images; opt-in only; never stored or sent to the LLM/ranking.
+* ✅ Frontend: /beauty, age opt-in, camera picker, performance presets, Lab tabs (age, eCosmetics data, ranking,
+  performance), Frame Inspector, simulated AR lip preview — 81 vitest tests, build green.
+* 🟡 Real face/webcam not available in the build environment: AR alignment, Frame Inspector camera steps and live
+  age estimates are untested on real input.
+* 🟡 Hosted-LLM behaviour unevaluated (no API key); offline-template provider evaluated (docs/evaluation/llm.md).
+* ⛔ nDCG needs human relevance judgments (template in backend/evaluation/cases/).
+* ⛔ Clinical review of safety texts; authorised retailer feed; feature classifiers on real faces.

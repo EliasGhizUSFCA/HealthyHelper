@@ -123,4 +123,5 @@ export const SYNTHETIC_LAYOUT: Record<RegionName, [number, number, number, numbe
   right_undereye: [0.25, 0.42, 0.14, 0.1],
   left_undereye: [0.61, 0.42, 0.14, 0.1],
   skin_chin: [0.43, 0.84, 0.14, 0.12],
+  face: [0.15, 0.05, 0.7, 0.9],
 };

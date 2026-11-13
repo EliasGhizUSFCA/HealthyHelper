@@ -11,14 +11,16 @@ function Json({ value }: { value: unknown }) {
 }
 
 export function LLMTracePanel() {
-  const { latestResult, chat } = useEngineState();
-  const [tab, setTab] = useState<"evidence" | "trace" | "context" | "chat">("evidence");
+  const { latestResult, chat, recommendation } = useEngineState();
+  const [tab, setTab] = useState<"evidence" | "trace" | "context" | "recs" | "chat">("evidence");
+  const rec = recommendation.response;
   const res = chat.lastResponse;
   const tr = res?.trace;
   const tabs = [
     ["evidence", "Live evidence"],
     ["trace", "Agent trace"],
     ["context", "Context sent"],
+    ["recs", "Product explanations"],
     ["chat", "Chat"],
   ] as const;
   return (
@@ -123,6 +125,36 @@ export function LLMTracePanel() {
           </div>
         ) : (
           <Empty>No LLM request yet.</Empty>
+        ))}
+      {tab === "recs" &&
+        (rec ? (
+          <div className="space-y-2">
+            <div className="flex flex-wrap gap-1">
+              {Object.entries(rec.trace.llm).map(([k, v]) => (
+                <Badge key={k} tone={k === "fallback" && v ? "warn" : "neutral"}>
+                  {k}: {typeof v === "object" ? JSON.stringify(v) : String(v)}
+                </Badge>
+              ))}
+            </div>
+            <p className="text-[10px] text-zinc-500">
+              Input = the {rec.results.length} ranked product records (marked untrusted retailer data), the user&apos;s stated preferences and whether age was used ({rec.trace.age_used ? "yes" : "no"}).
+              Confirmed age is never included as a value; estimated age is never sent.
+            </p>
+            <div className="text-[9px] uppercase tracking-wider text-zinc-500">Validation</div>
+            <ul className="space-y-0.5">
+              {rec.trace.validation.map((c) => (
+                <li key={c.name} className="flex items-start gap-1 text-[10px]">
+                  <span className={c.passed ? "text-emerald-400" : "text-rose-400"}>{c.passed ? "✓" : "✗"}</span>
+                  <span className="font-mono text-zinc-300">{c.name}</span>
+                  {c.detail && <span className="text-zinc-500">— {c.detail}</span>}
+                </li>
+              ))}
+            </ul>
+            <div className="text-[9px] uppercase tracking-wider text-zinc-500">Validated explanations</div>
+            <Json value={rec.explanations} />
+          </div>
+        ) : (
+          <Empty>Run a recommendation (Beauty page or Ranking tab) to see the product-explanation trace.</Empty>
         ))}
       {tab === "chat" && (
         <div className="h-full min-h-48">

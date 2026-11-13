@@ -8,6 +8,8 @@ import { SiteNav } from "@/components/SiteNav";
 import { CameraActiveIndicator } from "@/components/Mirror/CameraControls";
 import { api, ApiError, forgetContributorId, getContributorId } from "@/lib/api";
 import { useClientValue } from "@/hooks/useClientValue";
+import { CONFIRMABLE_AGE_RANGES } from "@/lib/catalog";
+import { confirmableLabel, filterRegionsForAge } from "@/lib/age";
 import { regionLabel } from "@/lib/format";
 import type { DatasetSample } from "@/lib/protocol";
 
@@ -46,7 +48,7 @@ function ConsentCard({ onConsent }: { onConsent: () => void }) {
     <section className="max-w-3xl space-y-4 rounded-2xl border-2 border-sky-300 bg-white p-6">
       <h2 className="text-xl font-semibold text-slate-900">Contribute training images — separate consent</h2>
       <ul className="list-disc space-y-1.5 pl-5 text-slate-700">
-        <li>Each capture saves small crops of your lips, eyes, under-eyes, nose and skin (no full-face photo) on the server running this app, so they can be labelled and used to <strong>train models</strong>.</li>
+        <li>Each capture saves small crops of your lips, eyes, under-eyes, nose and skin (no full-face photo unless you tick the separate option below) on the server running this app, so they can be labelled and used to <strong>train models</strong>.</li>
         <li>This is different from the Health Mirror, which never stores or trains on your images.</li>
         <li>Crops are linked only to a random ID stored in this browser — no name or email.</li>
         <li>Labels describe visible appearance (e.g. “visible spots”), not medical conditions.</li>
@@ -80,6 +82,8 @@ function CollectInner() {
   const [meta, setMeta] = useState<Record<string, string>>({ lighting: "indoor_warm", glasses: "no", makeup: "none" });
   const [device, setDevice] = useState("");
   const [skinTone, setSkinTone] = useState("");
+  const [ageRange, setAgeRange] = useState("");
+  const [includeFace, setIncludeFace] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
   const [mine, setMine] = useState<DatasetSample[]>([]);
   const [busy, setBusy] = useState(false);
@@ -114,9 +118,10 @@ function CollectInner() {
       const metadata: Record<string, string> = { ...meta };
       if (device.trim()) metadata.device = device.trim().slice(0, 40);
       if (skinTone) metadata.skin_tone = skinTone;
+      if (ageRange) metadata.age_range = ageRange; // self-reported, optional, stored only under the research consent
       const saved = await api.datasetAdd({
         contributor_id: getContributorId()!, session_id: sessionId(), quality: r.quality, metadata,
-        crops: r.crops.map((c) => ({ region: c.region, image_b64: c.dataUrl })),
+        crops: filterRegionsForAge(r.crops, includeFace).map((c) => ({ region: c.region, image_b64: c.dataUrl })),
       });
       setStatus(`Saved ${saved.length} region crops${r.quality.status === "poor" ? ` (quality: poor — ${r.quality.issues.join(", ")})` : ""}.`);
       await refresh();
@@ -202,6 +207,21 @@ function CollectInner() {
                       <option value="">prefer not to say</option>
                       {Array.from({ length: 10 }, (_, i) => <option key={i} value={`mst_${i + 1}`}>MST {i + 1}</option>)}
                     </select>
+                  </label>
+                  <label className="flex flex-col gap-1 text-slate-700">
+                    Your age range (optional, self-reported)
+                    <select value={ageRange} onChange={(e) => setAgeRange(e.target.value)} className="rounded border border-slate-300 px-2 py-1.5">
+                      <option value="">prefer not to say</option>
+                      {CONFIRMABLE_AGE_RANGES.map((a) => (
+                        <option key={a} value={a}>
+                          {confirmableLabel(a)}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="col-span-2 flex items-start gap-2 text-slate-700">
+                    <input type="checkbox" checked={includeFace} onChange={(e) => setIncludeFace(e.target.checked)} className="mt-1 h-4 w-4" />
+                    <span>Also save a whole-face crop (only needed to train the apparent-age model). Off by default.</span>
                   </label>
                   <label className="col-span-2 flex flex-col gap-1 text-slate-700">
                     Camera / device (optional)

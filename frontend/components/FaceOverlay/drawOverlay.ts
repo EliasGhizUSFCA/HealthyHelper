@@ -12,6 +12,8 @@ export interface OverlayLayers {
   nose: boolean;
   skin: boolean;
   undereye: boolean;
+  /** whole-face box used only for opt-in age estimation */
+  face: boolean;
   tracking: boolean;
   quality: boolean;
   /** Regions consumed by the currently selected model (highlighted). Empty = none. */
@@ -26,18 +28,20 @@ export const DEFAULT_LAYERS: OverlayLayers = {
   nose: true,
   skin: true,
   undereye: true,
+  face: false,
   tracking: true,
   quality: true,
   modelRegions: [],
 };
 
-export const MIRROR_LAYERS: OverlayLayers = { ...DEFAULT_LAYERS, mesh: false, eyes: false, lips: false, nose: false, skin: false, undereye: false, tracking: false, quality: false };
+export const MIRROR_LAYERS: OverlayLayers = { ...DEFAULT_LAYERS, mesh: false, eyes: false, lips: false, nose: false, skin: false, undereye: false, face: false, tracking: false, quality: false };
 
 function regionEnabled(r: RegionName, layers: OverlayLayers) {
   if (REGION_GROUPS.eyes.includes(r)) return layers.eyes;
   if (REGION_GROUPS.lips.includes(r)) return layers.lips;
   if (REGION_GROUPS.nose.includes(r)) return layers.nose;
   if (REGION_GROUPS.undereye.includes(r)) return layers.undereye;
+  if (r === "face") return layers.face;
   return layers.skin;
 }
 

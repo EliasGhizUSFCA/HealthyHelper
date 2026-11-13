@@ -4,6 +4,7 @@ import { useEngineState } from "@/hooks/useEngine";
 import { featureLabel, regionLabel } from "@/lib/format";
 import type { Observation } from "@/lib/protocol";
 import { StaleNotice } from "@/components/StaleNotice";
+import { TierBadge } from "@/components/ui";
 
 const FEATURE_PHRASES: Record<string, string> = {
   visible_dryness: "visible dryness",
@@ -83,8 +84,7 @@ export function ObservationCards() {
             <li key={`${o.region}:${o.feature}`} className={`rounded-xl border p-4 ${TONE_CLS[d.tone]}`}>
               <div className="flex items-start justify-between gap-2">
                 <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{regionLabel(o.region)}</p>
-                {o.model_tier === "demo" && <span className="rounded bg-fuchsia-600 px-1.5 py-0.5 text-[10px] font-bold uppercase text-white">Demo</span>}
-                {o.model_tier === "experimental" && <span className="rounded bg-sky-600 px-1.5 py-0.5 text-[10px] font-bold uppercase text-white">Experimental</span>}
+                <TierBadge tier={o.model_tier} />
               </div>
               <p className="mt-1 text-lg font-semibold text-slate-900">{d.headline}</p>
               <p className="mt-1 text-sm text-slate-700">{d.detail}</p>

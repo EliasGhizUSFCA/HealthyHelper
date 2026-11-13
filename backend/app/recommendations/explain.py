@@ -73,12 +73,18 @@ def validate(exp: ExplanationSet, ctx: dict) -> list[dict]:
     return checks
 
 
-def template_explanations(ctx: dict) -> ExplanationSet:
-    """Deterministic fallback: built only from the ranking components and recorded claims."""
+def template_explanations(ctx: dict, quote_claims: bool = True) -> ExplanationSet:
+    """Deterministic fallback: built only from the ranking components and recorded claims.
+
+    Retailer claims are quoted only if they don't contain medical/efficacy wording (e.g. "clinically proven"):
+    we never repeat such claims, even verbatim.
+    """
     out = []
     for p in ctx["ranked"]:
         bits = []
-        claims = [c for c in p["matched_claims"] if c["attribute"] != "contains_fragrance_ingredient"]
+        claims = [c for c in p["matched_claims"] if c["attribute"] != "contains_fragrance_ingredient" and not BANNED.search(c["text"]) and not PRICE.search(c["text"])]
+        if not quote_claims:
+            claims = []
         if claims:
             bits.append("The listing describes it with: “" + claims[0]["text"].strip("…") + "”")
         cat = ", ".join(c.replace("_", " ") for c in p["categories"])

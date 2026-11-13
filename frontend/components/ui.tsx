@@ -124,3 +124,11 @@ export function SimulatedBanner() {
     </div>
   );
 }
+
+/** Badge for any non-validated model tier. Demo and experimental outputs must never render without it. */
+export function TierBadge({ tier }: { tier: string }) {
+  if (tier === "validated") return null;
+  const label = tier === "demo" ? "Demo" : tier === "experimental" ? "Experimental" : tier === "unavailable" ? "Not loaded" : tier;
+  const cls = tier === "demo" ? "bg-fuchsia-600" : tier === "experimental" ? "bg-sky-600" : "bg-slate-500";
+  return <span className={cx("ml-1 rounded px-1.5 py-0.5 text-[10px] font-bold uppercase text-white", cls)}>{label}</span>;
+}
