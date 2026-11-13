@@ -27,7 +27,7 @@ class CircuitOpen(Exception):
 
 class PoliteFetcher:
     def __init__(self, policy: AccessPolicy, log: Callable[[dict], None] | None = None, client: httpx.Client | None = None,
-                 max_retries: int = 2, breaker_threshold: int = 3):
+                 max_retries: int = 2, breaker_threshold: int = 3, sleep: Callable[[float], None] = time.sleep, max_backoff_s: float = 600.0):
         self.policy = policy
         self.log = log or (lambda _e: None)
         self.client = client or httpx.Client(timeout=httpx.Timeout(20.0, connect=10.0), follow_redirects=False,
@@ -35,6 +35,22 @@ class PoliteFetcher:
         self.max_retries = max_retries
         self.breaker_threshold = breaker_threshold
         self._consecutive_blocks = 0
+        self.sleep = sleep
+        self.max_backoff_s = max_backoff_s
+
+    def _backoff_seconds(self, retry_after: str | None) -> float:
+        """Honour Retry-After (seconds or HTTP date); otherwise exponential: 30 s, 60 s, 120 s … (capped)."""
+        if retry_after:
+            try:
+                return min(self.max_backoff_s, max(0.0, float(retry_after)))
+            except ValueError:
+                from email.utils import parsedate_to_datetime
+
+                try:
+                    return min(self.max_backoff_s, max(0.0, parsedate_to_datetime(retry_after).timestamp() - time.time()))
+                except (TypeError, ValueError):
+                    pass
+        return min(self.max_backoff_s, 30.0 * 2 ** (self._consecutive_blocks - 1))
 
     def ensure_robots(self) -> None:
         if not self.policy.robots_fresh():
@@ -76,9 +92,16 @@ class PoliteFetcher:
                 retry_after = r.headers.get("retry-after")
                 self.log({"url": url, "kind": kind, "status": r.status_code, "outcome": "rate_limited" if r.status_code == 429 else "forbidden",
                           "error": f"retry-after={retry_after}", "elapsed_ms": ms})
-                # Never try to get around a block: back off, and stop entirely once the breaker opens.
-                raise CircuitOpen(f"HTTP {r.status_code} from retailer") if self._consecutive_blocks >= self.breaker_threshold else \
-                    httpx.HTTPStatusError(f"HTTP {r.status_code}", request=r.request, response=r)
+                # Never try to get around a block. Stop entirely once the breaker opens; otherwise slow down for the
+                # rest of the run (double the spacing, up to 30 s) and wait out Retry-After before the next request.
+                if self._consecutive_blocks >= self.breaker_threshold:
+                    raise CircuitOpen(f"HTTP {r.status_code} from retailer (after {self._consecutive_blocks} consecutive blocks)")
+                self.policy.min_interval_s = min(30.0, max(5.0, self.policy.min_interval_s * 2))
+                wait = self._backoff_seconds(retry_after)
+                self.log({"url": url, "kind": "backoff", "status": r.status_code, "outcome": "backing_off",
+                          "error": f"sleeping {wait:.0f}s; request spacing now {self.policy.min_interval_s:.0f}s"})
+                self.sleep(wait)
+                raise httpx.HTTPStatusError(f"HTTP {r.status_code}", request=r.request, response=r)
             if r.status_code >= 500 and attempt < self.max_retries:
                 self.log({"url": url, "kind": kind, "status": r.status_code, "outcome": "server_error_retry", "elapsed_ms": ms})
                 attempt += 1

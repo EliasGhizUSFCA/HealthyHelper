@@ -20,7 +20,8 @@ pages only, and recommendations are computed from the local catalogue.
 
 * Identifies itself: `AIHealthMirrorCatalogBot/0.2 (+repo URL; portfolio project; product catalog only)`.
 * One request at a time, ≥ 2 s apart (or robots `Crawl-delay` if larger); 20 s timeout; ≤ 2 retries on 5xx.
-* 403/429 → logged and backed off; three in a row open a circuit breaker that stops the run. Never retried
+* 403/429 → logged; the fetcher waits out `Retry-After` (or 30 s, 60 s, … up to 10 min), doubles its request
+  spacing for the rest of the run (max 30 s), and three consecutive blocks open a circuit breaker that stops the run. Never retried
   around, never bypassed (no CAPTCHA solving, no rotating IPs/agents, no auth).
 * Kill switch: `CATALOG_CRAWL_ENABLED=false` disables every request. If robots.txt cannot be fetched, nothing is crawled.
 * Targeted: sitemap URLs are pre-filtered by category keywords, capped per category (default 25), newest first;

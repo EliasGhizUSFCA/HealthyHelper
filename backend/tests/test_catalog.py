@@ -117,7 +117,9 @@ def test_fetcher_circuit_breaker_on_rate_limit():
     url = f"{BASE}/product/a/"
     site = Site({f"{BASE}/robots.txt": (200, ROBOTS), url: (429, "slow down")})
     logs = []
-    f = PoliteFetcher(AccessPolicy(min_interval_s=0), log=logs.append, client=site.client(), breaker_threshold=2)
+    slept = []
+    pol = AccessPolicy(min_interval_s=0)
+    f = PoliteFetcher(pol, log=logs.append, client=site.client(), breaker_threshold=2, sleep=slept.append)
     with pytest.raises(httpx.HTTPStatusError):
         f.get(url, "product")
     with pytest.raises(CircuitOpen):
@@ -126,6 +128,8 @@ def test_fetcher_circuit_breaker_on_rate_limit():
         f.get(url, "product")
     assert site.requests.count(url) == 2
     assert [e["outcome"] for e in logs if e["kind"] == "product"] == ["rate_limited", "rate_limited"]
+    assert slept == [60.0]  # honoured Retry-After: 60 before trying again
+    assert pol.min_interval_s == 5.0  # and slowed down for the rest of the run
 
 
 def make_site(price="12.50"):
