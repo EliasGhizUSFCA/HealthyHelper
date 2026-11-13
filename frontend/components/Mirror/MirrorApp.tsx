@@ -26,14 +26,14 @@ function MirrorInner() {
         <SiteNav current="/mirror" />
         <CameraActiveIndicator />
       </header>
-      <main id="main" className={`mx-auto grid ${width} grid-cols-[minmax(0,1fr)] gap-6 px-4 pb-12 sm:px-6 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] ${ideas ? "xl:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]" : ""}`}>
+      <main id="main" className={`mx-auto grid ${width} grid-cols-[minmax(0,1fr)] gap-6 px-4 pb-12 sm:px-6 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] ${ideas ? "xl:grid-cols-[minmax(0,1.9fr)_minmax(0,1fr)]" : ""}`}>
         <section aria-label="Camera" className="space-y-4">
-          <div className={ideas ? "grid grid-cols-[minmax(0,1fr)] gap-3 md:grid-cols-[minmax(0,1fr)_17rem]" : ""}>
-            <div className="aspect-[4/3] overflow-hidden rounded-2xl border border-slate-200 bg-slate-200 shadow-sm">
+          <div className={ideas ? "grid grid-cols-[minmax(0,1fr)] gap-3 md:grid-cols-[minmax(0,1fr)_22rem] xl:grid-cols-[minmax(0,1fr)_26rem]" : ""}>
+            <div className={`overflow-hidden rounded-2xl border border-slate-200 bg-slate-200 shadow-sm ${ideas ? "aspect-[4/3] md:aspect-auto md:h-full md:min-h-[36rem]" : "aspect-[4/3]"}`}>
               <CameraView layers={MIRROR_LAYERS} mirrored={settings.mirrored} fit="cover" dark={false} />
             </div>
             {ideas && (
-              <div className="relative h-[28rem] md:h-auto">
+              <div className="relative h-[34rem] md:h-auto md:min-h-[36rem]">
                 <div className="h-full md:absolute md:inset-0">
                   <ProductSidebar onClose={() => setIdeas(false)} />
                 </div>
