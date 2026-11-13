@@ -78,6 +78,19 @@ function drawRegion(ctx: Ctx, region: RegionName, size: number, intensity: numbe
     ctx.ellipse(size * 0.38, size * 0.75, size * 0.07, size * 0.04, 0, 0, Math.PI * 2);
     ctx.ellipse(size * 0.62, size * 0.75, size * 0.07, size * 0.04, 0, 0, Math.PI * 2);
     ctx.fill();
+  } else if (region === "left_undereye" || region === "right_undereye") {
+    fillNoise(ctx, size, skin, 12, rnd);
+    ctx.fillStyle = `rgba(70,45,60,${0.15 + intensity * 0.45})`;
+    ctx.filter = "blur(6px)";
+    ctx.beginPath();
+    ctx.ellipse(size / 2, size * 0.3, size * 0.36, size * 0.18, 0, 0, Math.PI);
+    ctx.fill();
+    ctx.filter = "none";
+    ctx.strokeStyle = "rgba(60,40,30,0.7)";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.ellipse(size / 2, size * 0.18, size * 0.4, size * 0.1, 0, 0, Math.PI);
+    ctx.stroke();
   } else {
     fillNoise(ctx, size, skin, 16, rnd);
     const flakes = Math.round(intensity * 60);
@@ -107,4 +120,7 @@ export const SYNTHETIC_LAYOUT: Record<RegionName, [number, number, number, numbe
   skin_right_cheek: [0.2, 0.5, 0.18, 0.18],
   skin_left_cheek: [0.62, 0.5, 0.18, 0.18],
   lips: [0.38, 0.68, 0.24, 0.16],
+  right_undereye: [0.25, 0.42, 0.14, 0.1],
+  left_undereye: [0.61, 0.42, 0.14, 0.1],
+  skin_chin: [0.43, 0.84, 0.14, 0.12],
 };

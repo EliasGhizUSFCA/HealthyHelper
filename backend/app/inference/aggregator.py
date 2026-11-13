@@ -15,6 +15,13 @@ from statistics import median
 from app.schemas.protocol import Decision, Observation, Prediction, QualityStatus, StructuredObservations
 from app.timeutil import now_ms
 
+_TIER_RANK = {"demo": 0, "experimental": 1, "validated": 2}
+
+
+def weakest_tier(obs: list[Observation]) -> str:
+    tiers = [o.model_tier for o in obs if o.status == "accepted" and o.model_tier in _TIER_RANK]
+    return min(tiers, key=lambda t: _TIER_RANK[t]) if tiers else "none"
+
 
 class ObservationAggregator:
     def __init__(self, window: int = 5, min_frames: int = 3):
@@ -65,5 +72,6 @@ class ObservationAggregator:
             quality_issues=self.last_issues,
             observations=obs,
             demo_mode=any(o.model_tier == "demo" for o in obs),
+            validation_status=weakest_tier(obs),
             generated_at=now_ms(),
         )

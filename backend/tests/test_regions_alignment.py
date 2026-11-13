@@ -24,14 +24,15 @@ def test_bbox_clamped_to_frame():
 
 
 def test_crop_pixels_come_from_the_region():
-    """Paint each region's landmark centroid a unique colour; the crop centre must have that colour."""
+    """Paint each region's box centre a unique colour; the crop's centre pixel must have that colour."""
     W, H = 800, 600
     lm = synthetic_landmarks()
     img = np.zeros((H, W, 3), np.uint8)
     colors = {}
     for i, (name, spec) in enumerate(region_specs().items()):
-        c = (lm[list(spec.landmarks), :2].mean(0) * [W, H]).astype(int)
-        col = (30 * (i + 1), 255 - 30 * i, 100)
+        x, y, w, h = region_bbox_px(lm, spec, W, H)
+        c = (x + w // 2, y + h // 2)
+        col = (20 * (i + 1), 250 - 20 * i, 100)
         colors[name] = col
         img[c[1] - 3 : c[1] + 4, c[0] - 3 : c[0] + 4] = col
     crops = crop_regions(img, lm)

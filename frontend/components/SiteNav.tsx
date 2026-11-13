@@ -4,6 +4,8 @@ const LINKS = [
   { href: "/mirror", label: "Health Mirror" },
   { href: "/lab", label: "Model Lab" },
   { href: "/history", label: "Comparisons" },
+  { href: "/collect", label: "Collect" },
+  { href: "/label", label: "Label" },
   { href: "/privacy", label: "Privacy" },
 ];
 

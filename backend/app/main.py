@@ -9,6 +9,7 @@ from fastapi import FastAPI, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
 
 from app import __version__
+from app.api.dataset import router as dataset_router
 from app.api.routes import router
 from app.api.ws import inference_socket
 from app.config import get_settings
@@ -37,8 +38,9 @@ def create_app(services: Services | None = None) -> FastAPI:
     app = FastAPI(title="AI Health Mirror API", version=__version__, lifespan=lifespan)
     app.state.services = services
     app.add_middleware(CORSMiddleware, allow_origins=list(get_settings().cors_origins), allow_credentials=False,
-                       allow_methods=["GET", "POST", "DELETE"], allow_headers=["content-type"])
+                       allow_methods=["GET", "POST", "PUT", "DELETE"], allow_headers=["content-type"])
     app.include_router(router)
+    app.include_router(dataset_router)
 
     @app.websocket("/ws/inference")
     async def ws_endpoint(ws: WebSocket):

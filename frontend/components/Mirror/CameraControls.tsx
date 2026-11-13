@@ -35,7 +35,7 @@ export function ConsentToggle({ dark = false }: { dark?: boolean }) {
       <span>
         <span className={cx("font-semibold", dark ? "text-zinc-100" : "text-slate-900")}>Send small cropped face regions to the analysis server</span>
         <span className="block">
-          Needed for visual observations. Only ≤160 px crops of lips, eyes, nose and skin are sent; they are processed in memory and not stored or used for training.
+          Needed for visual observations. Only ≤160 px crops of lips, eyes, under-eyes, nose and skin are sent; they are processed in memory and not stored or used for training.
         </span>
       </span>
     </label>

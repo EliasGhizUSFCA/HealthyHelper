@@ -28,8 +28,12 @@ export default function PrivacyPage() {
         <h2 className="mt-8 text-xl font-semibold text-slate-900">Session comparisons (separate consent)</h2>
         <ul className="mt-2 list-disc space-y-1 pl-5">
           <li>Only when you press &ldquo;Save snapshot&rdquo; and confirm the consent dialog, aligned region crops and their observations are stored on the server under a random pseudonymous ID kept in this browser.</li>
-          <li>Images are never used to train models. Training on user images would require a separate consent that this application does not request.</li>
           <li>You can delete every stored snapshot below. Deletion removes database rows and image files.</li>
+        </ul>
+        <h2 className="mt-8 text-xl font-semibold text-slate-900">Training data (separate research consent)</h2>
+        <ul className="mt-2 list-disc space-y-1 pl-5">
+          <li>Images from the Health Mirror, Model Lab and comparison snapshots are never used to train models.</li>
+          <li>Only crops you capture on the Collect page, after a separate research consent, are stored for training. They stay on the machine running the backend, are linked to a random ID, and withdrawing consent on the Collect page permanently deletes all of them and their labels.</li>
         </ul>
         <div className="mt-8 rounded-xl border border-slate-200 bg-white p-5">
           <h2 className="text-lg font-semibold text-slate-900">Delete my data</h2>

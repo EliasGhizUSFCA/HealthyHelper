@@ -9,7 +9,7 @@ PER_SUBJECT="${PER_SUBJECT:-8}"
 EPOCHS="${EPOCHS:-6}"
 BACKBONE="${BACKBONE:-resnet18}"
 PRETRAINED_FLAG="${PRETRAINED_FLAG:---pretrained}"
-MODELS="${MODELS:-lip_dryness eye_redness nasal_redness skin_flaking}"
+MODELS="${MODELS:-lip_dryness eye_redness nasal_redness skin_flaking skin_blemishes skin_redness skin_shine undereye_darkness}"
 export MLFLOW_DISABLE_AGENT_HINT=1
 for m in $MODELS; do
   data="../data/synthetic/$m"

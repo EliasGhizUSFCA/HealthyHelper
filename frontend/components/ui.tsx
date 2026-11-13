@@ -56,6 +56,7 @@ export function statusTone(status: string | null | undefined): Tone {
     case "reconnecting":
     case "connecting":
     case "demo":
+    case "experimental":
       return "warn";
     case "error":
     case "unusable":

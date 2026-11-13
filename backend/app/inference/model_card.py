@@ -10,7 +10,7 @@ from pydantic import BaseModel, Field
 class ModelCard(BaseModel):
     model_id: str
     version: str
-    tier: Literal["demo", "validated"]
+    tier: Literal["demo", "experimental", "validated"]
     feature: str
     regions: list[str]
     classes: list[str]

@@ -39,6 +39,9 @@ class RegionName(str, Enum):
     skin_forehead = "skin_forehead"
     skin_left_cheek = "skin_left_cheek"
     skin_right_cheek = "skin_right_cheek"
+    skin_chin = "skin_chin"
+    left_undereye = "left_undereye"
+    right_undereye = "right_undereye"
 
 
 class PipelineStage(str, Enum):
@@ -70,12 +73,16 @@ class ModelTier(str, Enum):
 
     * ``demo`` – trained on synthetic data only. Exercises the pipeline; its
       outputs are NOT observations about a real face.
-    * ``validated`` – has an evaluation report on appropriately sourced,
-      labelled data (still not clinical validation).
+    * ``experimental`` – trained on real, consented images, but the dataset is
+      too small / single-annotator to meet the validation gate. Outputs are
+      shown with an "experimental" disclosure.
+    * ``validated`` – passed the validation gate (enough held-out subjects and
+      images, inter-annotator agreement). Still not clinical validation.
     * ``unavailable`` – no weights loaded.
     """
 
     demo = "demo"
+    experimental = "experimental"
     validated = "validated"
     unavailable = "unavailable"
 
@@ -218,6 +225,8 @@ class StructuredObservations(_Model):
     user_reported_symptoms: list[str] = Field(default_factory=list)
     medical_diagnosis_requested: bool = False
     demo_mode: bool = Field(description="True if any contributing model is demo-tier (synthetic training data)")
+    validation_status: Literal["demo", "experimental", "validated", "none"] = Field(
+        "none", description="Weakest tier among models contributing accepted observations ('none' if there are none)")
     generated_at: float
 
 
@@ -480,3 +489,46 @@ class ComparisonResult(_Model):
     after: SnapshotSummary
     regions: list[RegionComparison]
     caveats: list[str]
+
+
+# --------------------------------------------------------------------------- #
+# REST: consented real-data collection + labelling
+# --------------------------------------------------------------------------- #
+
+
+class DatasetConsent(_Model):
+    contributor_id: str = Field(min_length=8, max_length=64)
+    consent_research: bool = Field(description="Separate, explicit consent to store crops for TRAINING models")
+    consent_text_version: str
+
+
+class DatasetCrop(_Model):
+    region: RegionName
+    image_b64: str
+
+
+class DatasetCapture(_Model):
+    contributor_id: str
+    session_id: str = Field(min_length=4, max_length=64, description="Capture session (e.g. one sitting) — used for grouped splits")
+    quality: ImageQuality
+    metadata: dict[str, str] = Field(default_factory=dict, description="lighting, glasses, makeup, device, skin_tone (all optional, self-reported)")
+    crops: list[DatasetCrop] = Field(min_length=1, max_length=12)
+
+
+class DatasetLabel(_Model):
+    model_id: str
+    annotator_id: str
+    label: Literal["positive", "negative", "cannot_judge"]
+
+
+class DatasetSample(_Model):
+    sample_id: str
+    contributor_id: str
+    session_id: str
+    created_at: float
+    region: RegionName
+    width: int
+    height: int
+    quality: ImageQuality
+    metadata: dict[str, str]
+    labels: list[DatasetLabel]

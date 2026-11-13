@@ -16,7 +16,10 @@ export type RegionName =
   | "nose"
   | "skin_forehead"
   | "skin_left_cheek"
-  | "skin_right_cheek";
+  | "skin_right_cheek"
+  | "skin_chin"
+  | "left_undereye"
+  | "right_undereye";
 
 export const PIPELINE_ORDER = [
   "camera_capture",
@@ -34,7 +37,7 @@ export const PIPELINE_ORDER = [
 export type PipelineStage = (typeof PIPELINE_ORDER)[number];
 
 export type StageStatus = "ok" | "warning" | "error" | "skipped";
-export type ModelTier = "demo" | "validated" | "unavailable";
+export type ModelTier = "demo" | "experimental" | "validated" | "unavailable";
 export type Decision = "accepted" | "inconclusive" | "abstained" | "unavailable";
 export type QualityStatus = "acceptable" | "poor" | "unusable";
 
@@ -143,6 +146,7 @@ export interface StructuredObservations {
   user_reported_symptoms: string[];
   medical_diagnosis_requested: boolean;
   demo_mode: boolean;
+  validation_status: "demo" | "experimental" | "validated" | "none";
   generated_at: number;
 }
 
@@ -366,7 +370,7 @@ export const PROTOCOL_FIELDS: Record<string, string[]> = {
   TelemetryEvent: ["session_id", "frame_id", "stage", "status", "origin", "started_at", "duration_ms", "input_type", "output_type", "model_id", "model_version", "message", "seq"],
   Prediction: ["model_id", "model_version", "model_tier", "region", "feature", "classes", "probabilities", "top_class", "top_probability", "positive_probability", "threshold", "decision", "decision_reason", "latency_ms", "input"],
   Observation: ["region", "feature", "confidence", "status", "present", "model_id", "model_version", "model_tier", "frames_aggregated"],
-  StructuredObservations: ["image_quality", "quality_issues", "observations", "user_reported_symptoms", "medical_diagnosis_requested", "demo_mode", "generated_at"],
+  StructuredObservations: ["image_quality", "quality_issues", "observations", "user_reported_symptoms", "medical_diagnosis_requested", "demo_mode", "validation_status", "generated_at"],
   ClientFrame: ["type", "frame_id", "captured_at", "quality", "regions", "client_events", "options"],
   InferenceResult: ["type", "session_id", "frame_id", "captured_at", "received_at", "completed_at", "queue_wait_ms", "image_quality", "predictions", "observations", "events"],
   Explanation: ["type", "request_id", "model_id", "model_version", "region", "method", "target_class", "target_probability", "input_b64", "heatmap_b64", "latency_ms", "caveat"],
@@ -375,3 +379,56 @@ export const PROTOCOL_FIELDS: Record<string, string[]> = {
   AgentTrace: ["provider", "model", "route", "steps", "evidence", "selected_evidence", "retrieval", "context_preview", "validation", "attempts", "latency_ms", "usage"],
   AssistantReply: ["message", "follow_up_questions", "referenced_observations", "evidence_sufficient", "suggests_professional"],
 };
+
+// ---- consented training-data collection ----
+export type DatasetLabelValue = "positive" | "negative" | "cannot_judge";
+export interface DatasetConsent {
+  contributor_id: string;
+  consent_research: boolean;
+  consent_text_version: string;
+}
+export interface DatasetCapture {
+  contributor_id: string;
+  session_id: string;
+  quality: ImageQuality;
+  metadata: Record<string, string>;
+  crops: { region: RegionName; image_b64: string }[];
+}
+export interface DatasetLabel {
+  model_id: string;
+  annotator_id: string;
+  label: DatasetLabelValue;
+}
+export interface DatasetSample {
+  sample_id: string;
+  contributor_id: string;
+  session_id: string;
+  created_at: number;
+  region: RegionName;
+  width: number;
+  height: number;
+  quality: ImageQuality;
+  metadata: Record<string, string>;
+  labels: DatasetLabel[];
+}
+export interface DatasetModelStats {
+  model_id: string;
+  feature: string;
+  regions: RegionName[];
+  samples: number;
+  labelled: number;
+  usable: number;
+  positive: number;
+  negative: number;
+  excluded_cannot_judge_or_tie: number;
+  subjects: number;
+  sessions: number;
+  annotators: string[];
+  agreement_pairs: { annotators: string[]; n: number; kappa: number | null; agreement: number }[];
+  mean_kappa: number | null;
+}
+export interface DatasetExport extends DatasetModelStats {
+  manifest: string;
+  rows: number;
+  train_command: string;
+}

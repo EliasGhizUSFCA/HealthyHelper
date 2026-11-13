@@ -31,6 +31,13 @@ from app.schemas.protocol import ModelInfo, ModelTier
 log = logging.getLogger(__name__)
 
 
+TIER_MESSAGES = {
+    "demo": "DEMO model trained on synthetic data only — outputs are not observations about a real face.",
+    "experimental": "EXPERIMENTAL model trained on a small real, consented dataset that has not passed the validation gate — treat outputs as tentative.",
+    "validated": "Loaded. Passed the project's validation gate on held-out real data; not clinically validated.",
+}
+
+
 def _softmax(z: np.ndarray) -> np.ndarray:
     z = z - z.max(axis=1, keepdims=True)
     e = np.exp(z)
@@ -83,11 +90,7 @@ class LoadedModel:
             runtime=self.runtime,  # type: ignore[arg-type]
             default_threshold=c.default_threshold,
             explainable=self.torch_model is not None,
-            status_message=(
-                "DEMO model trained on synthetic data only — outputs are not observations about a real face."
-                if c.tier == "demo"
-                else "Loaded. Evaluated on held-out data; not clinically validated."
-            ),
+            status_message=TIER_MESSAGES[c.tier],
             training_summary=c.training_summary,
             metrics=c.metrics,
         )

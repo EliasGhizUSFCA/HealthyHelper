@@ -416,6 +416,187 @@
       "title": "ComparisonResult",
       "type": "object"
     },
+    "DatasetCapture": {
+      "additionalProperties": false,
+      "properties": {
+        "contributor_id": {
+          "title": "Contributor Id",
+          "type": "string"
+        },
+        "crops": {
+          "items": {
+            "$ref": "#/$defs/DatasetCrop"
+          },
+          "maxItems": 12,
+          "minItems": 1,
+          "title": "Crops",
+          "type": "array"
+        },
+        "metadata": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "lighting, glasses, makeup, device, skin_tone (all optional, self-reported)",
+          "title": "Metadata",
+          "type": "object"
+        },
+        "quality": {
+          "$ref": "#/$defs/ImageQuality"
+        },
+        "session_id": {
+          "description": "Capture session (e.g. one sitting) \u2014 used for grouped splits",
+          "maxLength": 64,
+          "minLength": 4,
+          "title": "Session Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "contributor_id",
+        "session_id",
+        "quality",
+        "crops"
+      ],
+      "title": "DatasetCapture",
+      "type": "object"
+    },
+    "DatasetConsent": {
+      "additionalProperties": false,
+      "properties": {
+        "consent_research": {
+          "description": "Separate, explicit consent to store crops for TRAINING models",
+          "title": "Consent Research",
+          "type": "boolean"
+        },
+        "consent_text_version": {
+          "title": "Consent Text Version",
+          "type": "string"
+        },
+        "contributor_id": {
+          "maxLength": 64,
+          "minLength": 8,
+          "title": "Contributor Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "contributor_id",
+        "consent_research",
+        "consent_text_version"
+      ],
+      "title": "DatasetConsent",
+      "type": "object"
+    },
+    "DatasetCrop": {
+      "additionalProperties": false,
+      "properties": {
+        "image_b64": {
+          "title": "Image B64",
+          "type": "string"
+        },
+        "region": {
+          "$ref": "#/$defs/RegionName"
+        }
+      },
+      "required": [
+        "region",
+        "image_b64"
+      ],
+      "title": "DatasetCrop",
+      "type": "object"
+    },
+    "DatasetLabel": {
+      "additionalProperties": false,
+      "properties": {
+        "annotator_id": {
+          "title": "Annotator Id",
+          "type": "string"
+        },
+        "label": {
+          "enum": [
+            "positive",
+            "negative",
+            "cannot_judge"
+          ],
+          "title": "Label",
+          "type": "string"
+        },
+        "model_id": {
+          "title": "Model Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "model_id",
+        "annotator_id",
+        "label"
+      ],
+      "title": "DatasetLabel",
+      "type": "object"
+    },
+    "DatasetSample": {
+      "additionalProperties": false,
+      "properties": {
+        "contributor_id": {
+          "title": "Contributor Id",
+          "type": "string"
+        },
+        "created_at": {
+          "title": "Created At",
+          "type": "number"
+        },
+        "height": {
+          "title": "Height",
+          "type": "integer"
+        },
+        "labels": {
+          "items": {
+            "$ref": "#/$defs/DatasetLabel"
+          },
+          "title": "Labels",
+          "type": "array"
+        },
+        "metadata": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "Metadata",
+          "type": "object"
+        },
+        "quality": {
+          "$ref": "#/$defs/ImageQuality"
+        },
+        "region": {
+          "$ref": "#/$defs/RegionName"
+        },
+        "sample_id": {
+          "title": "Sample Id",
+          "type": "string"
+        },
+        "session_id": {
+          "title": "Session Id",
+          "type": "string"
+        },
+        "width": {
+          "title": "Width",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "sample_id",
+        "contributor_id",
+        "session_id",
+        "created_at",
+        "region",
+        "width",
+        "height",
+        "quality",
+        "metadata",
+        "labels"
+      ],
+      "title": "DatasetSample",
+      "type": "object"
+    },
     "Decision": {
       "enum": [
         "accepted",
@@ -890,9 +1071,10 @@
       "type": "object"
     },
     "ModelTier": {
-      "description": "How much a model's output may be trusted.\n\n* ``demo`` \u2013 trained on synthetic data only. Exercises the pipeline; its\n  outputs are NOT observations about a real face.\n* ``validated`` \u2013 has an evaluation report on appropriately sourced,\n  labelled data (still not clinical validation).\n* ``unavailable`` \u2013 no weights loaded.",
+      "description": "How much a model's output may be trusted.\n\n* ``demo`` \u2013 trained on synthetic data only. Exercises the pipeline; its\n  outputs are NOT observations about a real face.\n* ``experimental`` \u2013 trained on real, consented images, but the dataset is\n  too small / single-annotator to meet the validation gate. Outputs are\n  shown with an \"experimental\" disclosure.\n* ``validated`` \u2013 passed the validation gate (enough held-out subjects and\n  images, inter-annotator agreement). Still not clinical validation.\n* ``unavailable`` \u2013 no weights loaded.",
       "enum": [
         "demo",
+        "experimental",
         "validated",
         "unavailable"
       ],
@@ -1310,7 +1492,10 @@
         "nose",
         "skin_forehead",
         "skin_left_cheek",
-        "skin_right_cheek"
+        "skin_right_cheek",
+        "skin_chin",
+        "left_undereye",
+        "right_undereye"
       ],
       "title": "RegionName",
       "type": "string"
@@ -1699,6 +1884,18 @@
           },
           "title": "User Reported Symptoms",
           "type": "array"
+        },
+        "validation_status": {
+          "default": "none",
+          "description": "Weakest tier among models contributing accepted observations ('none' if there are none)",
+          "enum": [
+            "demo",
+            "experimental",
+            "validated",
+            "none"
+          ],
+          "title": "Validation Status",
+          "type": "string"
         }
       },
       "required": [

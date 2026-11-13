@@ -13,7 +13,7 @@ from app.schemas.protocol import AssistantReply, StructuredObservations, Validat
 
 CONDITIONS = (
     r"dehydrat\w*|infection|infected|conjunctivitis|pink ?eye|blepharitis|uveitis|glaucoma|eczema|psoriasis|dermatitis|rosacea|"
-    r"cheilitis|herpes|cold sore|allerg\w*|deficien\w*|anemi\w*|anaemi\w*|diabetes|cancer|melanoma|lupus|disease|disorder|syndrome|illness|sick"
+    r"cheilitis|herpes|cold sore|acne|pimples? condition|allerg\w*|deficien\w*|anemi\w*|anaemi\w*|diabetes|cancer|melanoma|lupus|disease|disorder|syndrome|illness|sick"
 )
 DIAGNOSTIC_PATTERNS = [
     re.compile(rf"\byou(?:'re| are| have| likely have| probably have| seem to have| might have| may have|'ve got) (?:an? |mild |some |signs of )?(?:{CONDITIONS})\b", re.I),
@@ -25,13 +25,17 @@ NEGATED_CONTEXT = re.compile(r"\b(can't|cannot|can not|unable to|not able to|no 
 SCORE_PATTERNS = [re.compile(r"\bhealth score\b", re.I), re.compile(r"\b\d{1,3}\s*(?:/|out of)\s*(?:10|100)\b", re.I)]
 REGION_WORDS = {
     "lips": r"\blips?\b|\bmouth\b",
-    "eyes": r"\beyes?\b|\bsclera\b",
+    "eyes": r"(?<!under )(?<!under-)(?<!under your )\beyes?\b|\bsclera\b",
     "nose": r"\bnose\b|\bnostrils?\b|\bnasal\b",
-    "skin": r"\bskin\b|\bcheeks?\b|\bforehead\b",
+    "skin": r"\bskin\b|\bcheeks?\b|\bforehead\b|\bchin\b|\bface\b",
+    "undereye": r"\bunder[- ]?eyes?\b|\bunder your eyes\b|\bdark circles\b|\bbags\b",
 }
 REGION_GROUP = {"lips": "lips", "left_eye": "eyes", "right_eye": "eyes", "nose": "nose",
-                "skin_forehead": "skin", "skin_left_cheek": "skin", "skin_right_cheek": "skin"}
-FEATURE_WORDS = re.compile(r"\b(dry|dryness|cracked|cracking|chapped|flak\w*|peel\w*|red|redness|irritat\w*|bloodshot)\b", re.I)
+                "skin_forehead": "skin", "skin_left_cheek": "skin", "skin_right_cheek": "skin",
+                "skin_chin": "skin", "left_undereye": "undereye", "right_undereye": "undereye"}
+FEATURE_WORDS = re.compile(
+    r"\b(dry|dryness|cracked|cracking|chapped|flak\w*|peel\w*|red|redness|irritat\w*|bloodshot|"
+    r"spots?|blemish\w*|bumps?|pimples?|breakouts?|shin\w*|oily|oiliness|dark|darker|darkness|circles)\b", re.I)
 HEDGE = re.compile(r"\b(if|whether|can't|cannot|can not|couldn't|unable|not|no clear|doesn't|don't|isn't|unclear|inconclusive|could|might|may|can be|can cause|can contribute|often|sometimes|when|any)\b", re.I)
 VISUAL_CLAIM = re.compile(r"\b(i can see|i see|appear\w*|look\w*|visible|visibly|noticed|detected|shows?|in (this|the) image)\b", re.I)
 
@@ -82,6 +86,10 @@ def validate_reply(reply: AssistantReply, obs: StructuredObservations | None, di
     if obs is not None and obs.demo_mode and positive:
         ok = bool(re.search(r"\bdemo\w*|\bsynthetic\b", text, re.I))
         checks.append(ValidationCheck(name="demo_mode_disclosed", passed=ok, detail="mentions demonstration model" if ok else "demo-tier evidence used without disclosure"))
+    elif obs is not None and obs.validation_status == "experimental" and positive:
+        ok = bool(re.search(r"\bexperimental\b|\btentative\b|\bnot (yet )?validated\b", text, re.I))
+        checks.append(ValidationCheck(name="experimental_model_disclosed", passed=ok,
+                                      detail="mentions experimental model" if ok else "experimental-tier evidence used without disclosure"))
 
     if diagnosis_requested:
         checks.append(ValidationCheck(name="diagnosis_request_redirected", passed=reply.suggests_professional,

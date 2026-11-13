@@ -50,17 +50,39 @@ def subject_bucket(subject_id: str, seed: int) -> float:
     return int(h[:8], 16) / 0xFFFFFFFF
 
 
-def grouped_split(samples: list[Sample], val_frac: float = 0.15, test_frac: float = 0.15, seed: int = 42) -> dict[str, list[Sample]]:
+def group_key(s: Sample, group_by: str = "subject_id") -> str:
+    if group_by == "subject_id":
+        return s.subject_id
+    if group_by not in s.meta:
+        raise ValueError(f"manifest has no column {group_by!r} to group by")
+    return f"{s.subject_id}/{s.meta[group_by]}"
+
+
+def grouped_split(samples: list[Sample], val_frac: float = 0.15, test_frac: float = 0.15, seed: int = 42,
+                  group_by: str = "subject_id") -> dict[str, list[Sample]]:
+    """Deterministic split where every group (subject, or subject/session) lands in exactly one split.
+
+    If a split would end up empty (few groups), groups are assigned by sorted hash order instead
+    so that each split gets at least one group when there are >= 3 groups.
+    """
     splits: dict[str, list[Sample]] = {"train": [], "val": [], "test": []}
+    groups = sorted({group_key(s, group_by) for s in samples}, key=lambda g: subject_bucket(g, seed))
+    assign: dict[str, str] = {}
+    for g in groups:
+        b = subject_bucket(g, seed)
+        assign[g] = "test" if b < test_frac else "val" if b < test_frac + val_frac else "train"
+    if len(groups) >= 3 and len(set(assign.values())) < 3:
+        n_test = max(1, round(len(groups) * test_frac))
+        n_val = max(1, round(len(groups) * val_frac))
+        for i, g in enumerate(groups):
+            assign[g] = "test" if i < n_test else "val" if i < n_test + n_val else "train"
     for s in samples:
-        b = subject_bucket(s.subject_id, seed)
-        key = "test" if b < test_frac else "val" if b < test_frac + val_frac else "train"
-        splits[key].append(s)
+        splits[assign[group_key(s, group_by)]].append(s)
     return splits
 
 
-def assert_no_leakage(splits: dict[str, list[Sample]]) -> None:
-    subjects = {k: {s.subject_id for s in v} for k, v in splits.items()}
+def assert_no_leakage(splits: dict[str, list[Sample]], group_by: str = "subject_id") -> None:
+    subjects = {k: {group_key(s, group_by) for s in v} for k, v in splits.items()}
     names = list(subjects)
     for i in range(len(names)):
         for j in range(i + 1, len(names)):

@@ -13,9 +13,12 @@ diagnostic claims, and has not been assessed for HIPAA, GDPR-health-data, or med
 | Derived scores / observations | — | Held in server memory per session | TTL (`SESSION_TTL_S`, default 1 h) | `DELETE /api/sessions/{id}` |
 | Snapshots (aligned crops + metadata) | **Not stored** | Separate explicit consent dialog per snapshot; consent text version + time recorded | until deleted | `DELETE /api/history/{history_id}` removes DB rows **and** files (tested) |
 | Chat text | Not logged (`LOG_SENSITIVE_CONTENT=false`) | — | request lifetime | n/a |
-| Training | User images are **never** used for training | — | — | — |
+| Mirror/Lab/snapshot images for training | **Never** used for training | — | — | — |
+| Training crops (Collect page) | **Not collected** | Separate research consent; crops ≤ 256 px of each region + optional self-reported conditions, linked to a random contributor ID | until withdrawn or deleted | Withdraw on `/collect` → `DELETE /api/dataset/contributors/{id}` removes all crops, labels and the consent record (tested). Retrain or delete models trained on them. |
 
 Additional controls:
+* Labels and model outputs describe appearance ("visible spots"), never conditions ("acne"); the validator blocks
+  condition names such as acne, rosacea or dermatitis being attributed to the user.
 * Visible camera-active indicator and stop button; camera starts only on an explicit click.
 * The history id is a random pseudonymous UUID generated in the browser — no accounts, names or emails.
 * A logging filter drops any record containing base64 image data (defence in depth; tested).
