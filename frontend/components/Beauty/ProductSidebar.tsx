@@ -39,7 +39,7 @@ export function ProductSidebar({ onClose }: { onClose?: () => void }) {
   return (
     <aside aria-label="Product ideas" className="flex h-full max-h-full min-h-0 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 p-3">
       <div className="mb-2 flex items-center justify-between">
-        <h2 className="text-sm font-semibold text-slate-900">Product ideas</h2>
+        <h2 className="text-base font-semibold text-slate-900">Product ideas</h2>
         {onClose && (
           <button type="button" onClick={onClose} className="rounded px-1.5 text-slate-500 hover:bg-slate-200" aria-label="Hide product ideas">
             ✕
@@ -54,7 +54,7 @@ export function ProductSidebar({ onClose }: { onClose?: () => void }) {
             onClick={() => setPicked(c)}
             aria-pressed={active?.key === c.key}
             className={cx(
-              "rounded-full border px-2.5 py-1 text-xs",
+              "rounded-full border px-3 py-1.5 text-sm",
               active?.key === c.key ? "border-sky-700 bg-sky-700 text-white" : "border-slate-300 bg-white text-slate-700 hover:border-sky-400",
             )}
             title={c.fromObservation ? "Based on what the mirror noticed in this image" : undefined}
@@ -64,18 +64,18 @@ export function ProductSidebar({ onClose }: { onClose?: () => void }) {
           </button>
         ))}
       </div>
-      <div className="mt-2 flex items-center gap-3 text-xs text-slate-600">
+      <div className="mt-2.5 flex items-center gap-4 text-sm text-slate-600">
         <label className="flex items-center gap-1">
-          <input type="checkbox" checked={fragranceFree} onChange={(e) => setFragranceFree(e.target.checked)} className="h-3.5 w-3.5" />
+          <input type="checkbox" checked={fragranceFree} onChange={(e) => setFragranceFree(e.target.checked)} className="h-4 w-4" />
           Fragrance-free
         </label>
         <label className="flex items-center gap-1">
           Max $
-          <input value={budget} onChange={(e) => setBudget(e.target.value.replace(/[^0-9.]/g, ""))} inputMode="decimal" className="w-12 rounded border border-slate-300 px-1 py-0.5" aria-label="Maximum price" />
+          <input value={budget} onChange={(e) => setBudget(e.target.value.replace(/[^0-9.]/g, ""))} inputMode="decimal" className="w-16 rounded border border-slate-300 px-1.5 py-0.5" aria-label="Maximum price" />
         </label>
       </div>
 
-      <div className="mt-3 min-h-0 flex-1 space-y-2 overflow-y-auto pr-0.5">
+      <div className="mt-3 min-h-0 flex-1 space-y-2.5 overflow-y-auto pr-0.5">
         {!active && <p className="text-xs text-slate-500">Tap what you&apos;re looking for{noticed.length === 0 ? " — or turn on analysis and ideas will follow what the mirror notices" : ""}.</p>}
         {active && active.fromObservation && !picked && (
           <p className="text-xs text-slate-500">Following what the mirror noticed ({active.label.toLowerCase()}). Tap another option any time.</p>
@@ -83,7 +83,7 @@ export function ProductSidebar({ onClose }: { onClose?: () => void }) {
         {recommendation.pending && <p className="text-xs text-slate-500">Finding products…</p>}
         {recommendation.error && <p role="alert" className="text-xs text-rose-700">{recommendation.error}</p>}
         {res && !recommendation.pending && res.results.length === 0 && <p className="text-xs text-slate-500">No matching listings — try another option or remove filters.</p>}
-        {res?.results.map((r) => <MiniProductCard key={r.product.product_id} ranked={r} why={why.get(r.product.product_id)} />)}
+        {res?.results.map((r) => <MiniProductCard key={r.product.product_id} ranked={r} why={why.get(r.product.product_id)} size="lg" />)}
         {res && res.results.length > 0 && (
           <p className="pt-1 text-[11px] leading-snug text-slate-400">From eCosmetics listings; ranked by your choices, not product testing. Opens the retailer site.</p>
         )}
