@@ -51,9 +51,10 @@ def build_services(settings: Settings | None = None, load_models: bool = True, p
         reg.load_all()
     llm = provider or make_provider(s)
     catalog = CatalogStore(s)
+    recommender = RecommendationService(catalog, llm)
     return Services(
         settings=s, registry=reg, engine=InferenceEngine(reg, s), sessions=SessionStore(),
-        assistant=HealthAssistant(llm, s, catalog), history=HistoryStore(s), dataset=DatasetStore(s),
+        assistant=HealthAssistant(llm, s, catalog, recommender), history=HistoryStore(s), dataset=DatasetStore(s),
         catalog=catalog, catalog_policy=AccessPolicy(), sitemap_cache=SitemapCache(s.data_dir / "catalog_cache" / "sitemap.json"),
-        refresh_job=RefreshJob(catalog), recommender=RecommendationService(catalog, llm),
+        refresh_job=RefreshJob(catalog), recommender=recommender,
     )

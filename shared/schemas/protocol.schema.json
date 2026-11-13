@@ -670,6 +670,12 @@
           "title": "Product Ids",
           "type": "array"
         },
+        "product_search": {
+          "default": false,
+          "description": "Message came from a product search box: treat as a product request even without 'recommend'/'find'",
+          "title": "Product Search",
+          "type": "boolean"
+        },
         "session_id": {
           "title": "Session Id",
           "type": "string"
@@ -699,6 +705,17 @@
           },
           "title": "Events",
           "type": "array"
+        },
+        "recommendations": {
+          "anyOf": [
+            {},
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "RecommendationResponse when the message was a product request (see schemas/catalog.py)",
+          "title": "Recommendations"
         },
         "reply": {
           "$ref": "#/$defs/AssistantReply"

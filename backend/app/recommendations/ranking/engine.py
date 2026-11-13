@@ -242,7 +242,18 @@ def rank(req: RecommendationRequest, candidates: list[CatalogProduct], weights: 
                                      contribution=0.0 if s is None else round(w.get(n, 0) * s / denom, 4), detail=d) for n, s, d in comps]
         results.append(RankedProduct(rank=0, product=p, total_score=round(total, 4), components=components,
                                      matched_claims=list({(c.attribute, c.text): c for c in matched}.values())[:6], warnings=warns))
-    results.sort(key=lambda r: (-r.total_score, r.product.product_id))
+    # Missing data never changes a SCORE, but when the user set a hard constraint we can't check for some products
+    # (budget without a listed price; fragrance-free without ingredient info), verified matches are listed first.
+    def unverified(r: RankedProduct) -> int:
+        u = 0
+        if req.budget_max is not None and r.product.price is None:
+            u += 1
+        if req.fragrance_free and r.product.attributes.fragrance_free_claimed != "yes" and r.product.attributes.contains_fragrance_ingredient != "no":
+            u += 1
+        return u
+    results.sort(key=lambda r: (unverified(r), -r.total_score, r.product.product_id))
+    meta["ordering"] = ("verified matches first, then listings whose price/ingredients could not be checked; then by score"
+                        if (req.budget_max is not None or req.fragrance_free) else "by score")
     for i, r in enumerate(results):
         r.rank = i + 1
     return results[: req.limit], removed, meta
