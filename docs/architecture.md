@@ -43,6 +43,42 @@ flowchart LR
   AGENT -- "ChatResponse + AgentTrace" --> TEL
 ```
 
+## v2: catalogue, recommendations and apparent age
+
+```mermaid
+flowchart LR
+  subgraph Offline["Catalogue job (background / CLI) — no user data"]
+    POL[AccessPolicy<br/>kill switch · robots.txt · blocked paths · 2 s spacing]
+    SM[wp-sitemap.xml<br/>24 h cache] --> FIL[URL keyword pre-filter<br/>per-category cap]
+    FIL --> FET[PoliteFetcher<br/>retries · circuit breaker · crawl log]
+    POL --- FET
+    FET --> PARSE[Parser<br/>JSON-LD Product/Offer/Breadcrumb + HTML sections]
+    PARSE --> ATTR[Claim & attribute extraction<br/>verbatim snippets; missing = unknown]
+    ATTR --> DB[(catalog_products · price_history<br/>url_aliases · crawl_log · refresh_runs)]
+  end
+  subgraph Online["Request path"]
+    REQ[RecommendationRequest<br/>user-chosen concern & preferences<br/>confirmed age range only] --> PREF[user_preferences]
+    PREF --> RET[product_retrieval<br/>local catalogue]
+    DB --> RET
+    RET --> RANK[product_ranking<br/>hard filters + weighted components]
+    RANK --> EXP[llm_request<br/>grounded explanations]
+    EXP --> VAL[response_validation<br/>ids · prices · claims · age]
+    VAL --> OUT[RecommendationResponse + trace + events]
+  end
+  CAM[Browser: face crop<br/>only if age opted in] --> AGE[age_estimation<br/>AgeEstimate + span] --> UI[UI only — never stored,<br/>never sent to LLM or ranking]
+```
+
+Design notes:
+* **The retailer never receives user data.** The crawler is a separate job; request handling reads only the local catalogue.
+* **Missing ≠ negative.** A component whose input is unknown (no ingredient list, variable-product price,
+  no shade list) gets `score = null` and is excluded from the weighted mean; the product carries a warning.
+* **Age is isolated.** `AgeEstimate` is returned to the browser for display only. The ranking engine accepts only
+  `confirmed_age_range` (schema has no field for an estimate — tested) and uses it only as an
+  appropriateness filter for a confirmed under-18 range.
+* **LLM explanations are post-hoc and checkable.** Rankings are computed deterministically first; the LLM only
+  explains given records, and validation rejects unknown ids, mismatched prices, efficacy/appearance claims,
+  and age mentions when age wasn't used.
+
 ## Why the work is split this way
 
 | Decision | Rationale |

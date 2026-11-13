@@ -15,9 +15,9 @@ import time
 from pathlib import Path
 
 from app.config import get_settings
-from app.services import build_services
 from app.schemas.catalog import RecommendationRequest
 from app.schemas.protocol import ChatMessage, ChatRequest, Observation, StructuredObservations
+from app.services import build_services
 
 CASES = Path(__file__).parent / "cases" / "llm_cases.json"
 
